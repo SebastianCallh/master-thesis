@@ -1,0 +1,85 @@
+%%% demothesis.tex --- 
+%% 
+%% Filename: demothesis.tex
+%% Description: 
+%% Author: Ola Leifler
+%% Maintainer: 
+%% Created: Thu Oct 14 12:52:20 2010 (CEST)
+%% Version: $Id$
+%% Version: 
+%% Last-Updated: Wed Jun 28 10:57:24 2017 (+0200)
+%%           By: Ola Leifler
+%%     Update #: 169
+%% URL: 
+%% Keywords: 
+%% Compatibility: 
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+%%% Commentary: 
+%% 
+%% 
+%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+%%% Change log:
+%% 
+%% 
+%% RCS $Log$
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 
+%%% Code:
+
+\documentclass[msc,lith,englisho]{liuthesis}
+%% Settings go in settings.tex
+\include{settings}
+\usepackage{rotating}
+\usepackage{color}
+
+% \usepackage{changebar}
+
+\department{Institutionen för datavetenskap}
+\departmentenglish{Department of Computer and Information Science}
+\departmentshort{IDA}
+% If this is a thesis at the cognitive science study programme, use
+% the "area" command to generate a proper (?) ISRN
+% \area{KOGVET-A}
+
+% Include an external supervisor on the cover page
+% \externalsupervisor{Min företagshandledare}
+\supervisor{Mattias Tiger}
+\examiner{Fredrik Heintz}
+\titleenglish{Trajectory based Arrival Time Prediction using Gaussian Processes}
+\subtitleenglish{}
+\titleswedish{Trajektoriebaserad ankomsttidsprediktion med Gaussiska Processer}
+\thesissubject{Datateknik}
+
+
+\publicationyear{2019}
+\currentyearthesisnumber{001}
+\dateofpublication{2019-05-08}
+
+\author{Sebastian Callh}
+
+% Two authors
+% \author{\parbox{\textwidth}{Ola Leifler\\
+%   Alexander Sanner}}
+
+\begin{document}
+
+\chapterstyle{VZ43}
+
+
+\include{content/intro}
+\include{content/theory}
+\include{content/method}
+\include{content/results}
+\include{content/discussion}
+\include{content/conclusion}
+\printbibliography
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% demothesis.tex ends here
+
