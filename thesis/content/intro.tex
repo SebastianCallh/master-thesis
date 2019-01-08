@@ -17,8 +17,16 @@ since many people depend on these services and erroneous predictions reflects ba
 public transport companies. 
 
 Various machine learning algorithms have been applied with great
-promise to predict arrival time~\cite{zheng2013urban, kim2017probabilistic, pang2018learning,
-  Nguyen2018Jun}, although it is still an active research area.
+promise to predict arrival times, and is still an active research area~\cite{kim2017probabilistic, 
+  pang2018learning, Nguyen2018Jun}. Modern approaches have made heavy
+use of Recursive Neural Networks, which have shown very good results. 
+However, these types of models simply output single valued predictions, with no way of
+measuring the certainty of the prediction and offering no way to interpret the
+results. By instead modeling the motion patterns of trajectories, the
+certainty of the predictions can be extracted in the form of a
+probability distribution. In addition, the pattern that produced the
+prediction can be analysed, and certain motion pattern characteristics
+can be corrrelated to good or bad predictions.
 
 \section{Aim}
 \label{sec:aim}
