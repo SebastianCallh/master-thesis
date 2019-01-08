@@ -9,11 +9,12 @@ As the years pass, more and more people move into urban areas and this
 increases the importance of sustainable urban development. A greater
 number of inhabitants puts higher pressure on the public
 transportation systems, which makes their efficiency increasingly
-important~\cite{kondepudi2014smart}. To offer a more efficient service, public traffic providers use systems
+important~\cite{kondepudi2014smart}. To offer a more efficient
+service, public transport companies use systems
 that predict arrival times of buses, trains and similar vehicles
 and present this information to the inhabitants. The accuracy of these predictions are paramount, 
 since many people depend on these services and erroneous predictions reflects badly on the
-public traffic providers. 
+public transport companies. 
 
 Various machine learning algorithms have been applied with great
 promise to predict arrival time~\cite{zheng2013urban, kim2017probabilistic, pang2018learning,
@@ -26,10 +27,10 @@ The aim of this thesis project is to model motion patterns of public
 transport vehicles using Gaussian Processes, and use these
 models to make arrival time predictions with an accuracy that is
 competitive to current state of the art models. Furthermore, the project aims to
-extract specific events from motion patterns, such as ``emergency break'',
-``standing still'', ``slow driving speed'', to see if certain events
-are more common in motion patterns that do not follow the publicly
-available time tables.
+detect specific characteristics from motion patterns, such as ``the
+driver had to emergency break'', or ``the vehicles speed is very slow'', to see if certain characteristics
+are more common in motion patterns where the vehicle is too early or
+too late, with respect to publicly available time schedules.
 
 \section{Research questions}
 \label{sec:research-questions}
