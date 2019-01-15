@@ -1,95 +1,118 @@
 \chapter{Introduction}
 \label{cha:introduction}
-
-The introduction shall be divided into these sections:
-
-\section{Motivation}
-\label{sec:motivation}
-As the years pass, more and more people move into urban areas and this
-increases the importance of sustainable urban development. A greater
-number of inhabitants puts higher pressure on the public
-transportation systems, which makes their efficiency increasingly
-important~\cite{kondepudi2014smart}. To offer a more efficient
+As cities grow, efficient public transport systems
+are becoming increasingly important. To offer a more efficient
 service, public transport companies use systems
-that predict arrival times of buses, trains and similar vehicles
-and present this information to the inhabitants. The accuracy of these predictions are paramount, 
-since many people depend on these services and erroneous predictions reflects badly on the
-public transport companies. 
+that predict arrival times of buses, trains and similar vehicles,
+and present this information to the general public. The accuracy
+and reliability of these predictions are paramount, since many 
+people depend on them, and erroneous predictions reflect badly on the
+public transport companies.
 
-Various machine learning algorithms have been applied with great
-promise to predict arrival times, and is still an active research area~\cite{kim2017probabilistic, 
-  pang2018learning, Nguyen2018Jun}. Modern approaches have made heavy
-use of Recursive Neural Networks, which have shown very good results. 
-However, these types of models simply output single valued predictions, with no way of
-measuring the certainty of the prediction and offering no way to interpret the
-results. By instead modeling the motion patterns of trajectories, the
-certainty of the predictions can be extracted in the form of a
-probability distribution. In addition, the pattern that produced the
-prediction can be analysed, and certain motion pattern characteristics
-can be corrrelated to good or bad predictions.
+Machine learning algorithms have been applied with great
+promise to predict arrival times~\cite{kim2017probabilistic, 
+  pang2018learning, Nguyen2018Jun}, and research is still ongoing.
+Modern approaches have seen heavy use of Recursive Neural Networks
+(RNN) to
+directly model arrival times from the current state of public
+transport vehicles, an approach which has shown very good prediction accuracy
+but have major drawbacks:
+
+\begin{enumerate}
+\item It does not quantify prediction uncertainties.
+\item It is severely lacking in explainability.
+\end{enumerate}
+
+Knowing the uncertainty of predictions is important to avoid putting
+too much faith in an ambiguous model, and being able to explain how
+a model makes its predictions is equally (if not more) important,
+since it allows reasoning about why a model made a certain prediction,
+and about how a model would act in previously unseen scenarios. 
+To address the first problem, a generative model can be used instead
+of RNNs, but solving the second one and achieving a satisfying
+level of explainability requires a much richer model of the data altogether.
+One promising approach to this is \textit{trajectory learning}, where the goal
+is to learn a \textit{motion pattern} (also known as \textit{activity
+  pattern} or \textit{activity model})
+which represents a cluster of individually observed
+trajectories. Trajectory learning is a problem which spans several
+fields, such as computer vision~\cite{Morris2008Sep, Zhang2006Aug,
+  Kim2011Nov, Campo2017Aug}, pattern recognition~\cite{Tang2018Aug}, autonomous 
+vehicles~\cite{Goli2018Jun}, and health informatics~\cite{Pimentel2013Sep},
+and a lot of different approaches have been explored.
+
+This thesis project aims to...
+%Some of these are Hidden Markov Models
+%  (HMMs)~\cite{Morris2008Sep,Suzuki2007Oct}, traditional clustering
+%  using Dynamic Time Warping and Longest Common Subsequence~\cite{Tang2018Aug, Vlachos2002Feb},
+%  Gaussian Processes~\cite{Tran2014Jun,
+%    Pimentel2013Sep, Leysen2016Sep, Campo2017Aug, Tiger2015Jul},
+%   and topic modeling~\cite{Wang2011}.
+% The advantages of basing predictions of a motion pattern model is numerous, including
+% detecting common characteristics, anlaysis of patterns that produce
+% erroneous predictions and outlier detection.
+
+--small pitch on what this thesis project will actually do--
 
 \section{Aim}
 \label{sec:aim}
+--This is subject to change. Currently written to cover most things
+talked about in the meeting from first day --
 
 The aim of this thesis project is to model motion patterns of public
-transport vehicles using Gaussian Processes, and use these
+transport vehicles using Gaussian Processes (GPs), and use these
 models to make arrival time predictions with an accuracy that is
 competitive to current state of the art models. Furthermore, the project aims to
 detect specific characteristics from motion patterns, such as ``the
-driver had to emergency break'', or ``the vehicles speed is very slow'', to see if certain characteristics
+driver had to emergency break'', or ``the vehicles speed was very slow'', to see if certain characteristics
 are more common in motion patterns where the vehicle is too early or
-too late, with respect to publicly available time schedules.
+too late, compared to publicly available time schedules. Finally, this
+project aims to investigate how irregular motion patterns can be
+detected.
 
 \section{Research questions}
 \label{sec:research-questions}
 
-This is where the research questions are described.
-Formulate these as explicit questions, terminated with a
-question mark. A report will usually contain several different
-research questions that are somehow thematically connected.
-There are usually 2-4 questions in total.
-
-Examples of common types of research questions (simplified
-and generalized):
+--this is subject to change. Currently written to cover most things
+talked about in the meeting from first day--
 
 \begin{enumerate}
-\item How does technique X affect the possibility of achieving the
-  effect Y?
+\item How can Gaussian Processes be used to capture the motion patterns
+  of trajectories?
 
-\item How can a system (or a solution) for X be realized so
-  that the effect Y is achieved?
+\item How can similar trajectories be clustered
+  into one representative motion pattern? 
+  
+\item How can specific characteristics be automatically detected in a
+  motion pattern?
 
-\item What are the alternatives to
-  achieving X, and which alternative gives the best effect considering
-  Y and Z? (This research question is normally broken down in to 2
-  separate questions.)
-n
+\item How can irregular motion patterns be detected?
 \end{enumerate}
 
-Observe that a very specific research question almost always
-leads to a better thesis report than a general research question
-(it is simply much more difficult to make something good
-from a general research question.)
+%Observe that a very specific research question almost always
+%leads to a better thesis report than a general research question
+%(it is simply much more difficult to make something good
+%from a general research question.)
 
-The best way to achieve a really good and specific research
-question is to conduct a thorough literature review and get
-familiarized with related research and practice. This leads to
-ideas and terminology which allows one to express oneself
-with precision and also have something valuable to say in the
-discussion chapter. And once a detailed research question
-has been specified, it is much easier to establish a suitable
-method and thus carry out the actual thesis work much faster
-than when starting with a fairly general research question. In
-the end, it usually pays off to spend some extra time in the
-beginning working on the literature review. The thesis
-supervisor can be of assistance in deciding when the research
-question is sufficiently specific and well-grounded in related
-research.
+%The best way to achieve a really good and specific research
+%question is to conduct a thorough literature review and get
+%familiarized with related research and practice. This leads to
+%ideas and terminology which allows one to express oneself
+%with precision and also have something valuable to say in the
+%discussion chapter. And once a detailed research question
+%has been specified, it is much easier to establish a suitable
+%method and thus carry out the actual thesis work much faster
+%than when starting with a fairly general research question. In
+%the end, it usually pays off to spend some extra time in the
+%beginning working on the literature review. The thesis
+%supervisor can be of assistance in deciding when the research
+%question is sufficiently specific and well-grounded in related
+%research.
 
 \section{Delimitations}
 \label{sec:delimitations}
-The data used is provided by Östgötatrafiken AB and is not publicly
-available. 
+%The data used is provided by Östgötatrafiken AB and is not publicly
+%available. 
 
 This is where the main delimitations are described. For
 example, this could be that one has focused the study on a
