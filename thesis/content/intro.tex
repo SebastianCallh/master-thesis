@@ -2,46 +2,76 @@
 \label{cha:introduction}
 As cities grow, efficient public transport systems
 are becoming increasingly important. To offer a more efficient
-service, public transport companies use systems
+service, public transport providers use systems
 that predict arrival times of buses, trains and similar vehicles,
 and present this information to the general public. The accuracy
-and reliability of these predictions are paramount, since many 
+and reliability of these predictions are paramount, since many
 people depend on them, and erroneous predictions reflect badly on the
-public transport companies.
+public transport provider.
 
 Machine learning algorithms have been applied with great
 promise to predict arrival times~\cite{kim2017probabilistic, 
   pang2018learning, Nguyen2018Jun}, and research is still ongoing.
-Modern approaches have seen heavy use of Recursive Neural Networks
-(RNN) to
-directly model arrival times from the current state of public
+Modern approaches have seen heavy use of Recurrent Neural Networks
+(RNNs) to directly model arrival times from the current state of public
 transport vehicles, an approach which has shown very good prediction accuracy
-but have major drawbacks:
+but has major drawbacks:
 
 \begin{enumerate}
 \item It does not quantify prediction uncertainties.
 \item It is severely lacking in explainability.
 \end{enumerate}
 
-Knowing the uncertainty of predictions is important to avoid putting
-too much faith in an ambiguous model, and being able to explain how
-a model makes its predictions is equally (if not more) important,
+To make good decisions based of model predictions, it is important to 
+know the prediction uncertainty. Being able to explain how
+a model makes its predictions is also a extremely desirable,
 since it allows reasoning about why a model made a certain prediction,
-and about how a model would act in previously unseen scenarios. 
+and about how a model would act in previously unseen
+scenarios. 
 To address the first problem, a generative model can be used instead
-of RNNs, but solving the second one and achieving a satisfying
+of RNNs. However, solving the second problem and achieving a satisfying
 level of explainability requires a much richer model of the data altogether.
-One promising approach to this is \textit{trajectory learning}, where the goal
-is to learn a \textit{motion pattern} (also known as \textit{activity
+One promising approach to create such a model is \textit{motion
+  pattern learning} (or \textit{trajectory learning}), where the goal is to learn a \textit{motion
+  pattern} (also known as \textit{activity
   pattern} or \textit{activity model})
 which represents a cluster of individually observed
-trajectories. Trajectory learning is a problem which spans several
+trajectories. Motion pattern learning is a problem which spans several
 fields, such as computer vision~\cite{Morris2008Sep, Zhang2006Aug,
   Kim2011Nov, Campo2017Aug}, pattern recognition~\cite{Tang2018Aug}, autonomous 
-vehicles~\cite{Goli2018Jun}, and health informatics~\cite{Pimentel2013Sep},
-and a lot of different approaches have been explored.
+vehicles~\cite{Goli2018Jun}, and health
+informatics~\cite{Pimentel2013Sep}, and is like arrival time
+prediction an active area of research.
 
-This thesis project aims to...
+By combining motion pattern learning and generative modeling,
+it is possible to make sophisticated predictions, and gain a lot of
+insight on how the system performs. For instance, it would be
+possible to present the probability of arriving on time, in
+real-time, to passengers planning trips with several transits.
+The public transport provider could see routes where
+predictions are particularly inaccurate, and analyse the motion
+patterns on those routes, to help explain their poor performance. 
+The motion patterns could be automatically analysed for
+detecting events of interest, such as ``velocity change from 50 to 40
+km/h'', ``stop'', ``queue'', ``emergency break'', to help explain the
+bad predictions. They could also be processed for anomaly
+detection, to automatically detect if stations are missed or if public
+transport vehicles stray from the designated route, or stand still for
+a long time.
+Based on the information extracted, the public transport provider
+could make efforts to improve the routes by, for instance, moving routes, moving stops or changing
+time schedules. Motion patterns created after the changes have been
+made could then be compared to previous ones, to see what effects
+the changes had. By iterating this process, continuous improvements
+could be made.
+
+%All these things would be impossible using solely point-wise predictions.
+
+%This thesis project aims to tackle both problems by modeling motion
+%patterns as Gaussian processes (GPs) and by predicting the arrival
+%times using Gaussian Process Regression (GPR). and demonstrate the
+%advantages from a business point of view 
+
 %Some of these are Hidden Markov Models
 %  (HMMs)~\cite{Morris2008Sep,Suzuki2007Oct}, traditional clustering
 %  using Dynamic Time Warping and Longest Common Subsequence~\cite{Tang2018Aug, Vlachos2002Feb},
@@ -52,41 +82,94 @@ This thesis project aims to...
 % detecting common characteristics, anlaysis of patterns that produce
 % erroneous predictions and outlier detection.
 
---small pitch on what this thesis project will actually do--
+\section{Problem Description}
+This section addresses the problems that need to be solved to create a
+system that both learns motion patterns and makes arrival
+time predictions that quantifies uncertainty. It also proposes
+solutions to these problems. An illustration of the data flow of the
+system can be seen in Figure~\ref{fig:system-subproblems}.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/system-subproblems}
+  \caption{An illustration of the data flow in a system that can make
+    arrival time predictions and detect events in motion patterns.}\label{fig:system-subproblems}
+\end{figure}
+
+\subsection{Trajectory Comparison}
+The first step in the system requires a way of comparing
+trajectories, which is not straight-forward. The reason for this is that trajectories
+can have different lengths and unevenly spaced observations.
+The proposed way of doing this is by \textit{synchronising} them,
+by learning a GP for \(f(x, y) \mapsto \tau\), where \(\tau = [0, 1]\), and then 
+two inverse GPs \(g_x(\tau) \mapsto x\), \(g_y(\tau) \mapsto y\). A similarity
+metric for model \(M_k\) is then given by the likelihood \(P(u, v | M_k)\), where
+$u$ and $v$ are given by the function compositions \(u = (g_{y} \circ f)(x, y)\),
+\(v = (g_{x} \circ f)(x, y)\).
+
+%and then using the likelihood of GP models as a
+%similarity metric. The synchronisation step can also be done by GPs,
+%so in total the functions $(x, y) \mapsto \tau \mapsto
+%x, y$ would be modeled for $\tau = [0,1]$.
+
+\subsection{Trajectory Clustering}
+Given a similarity metric, trajectories can be
+clustered. Agglomerative clustering is proposed for this task.
+One difficult question with clustering is what value of similarity to consider
+as ``close''. A lot of manual experiments would be needed to
+answer this, which could be very time consuming. Fortunately, the thesis
+project can proceed without properly solving this task, as clusters
+with a single trajectory can be considered.
+
+\subsection{Motion Pattern Learning}
+The challenge after clustering is to find a motion
+pattern model $M_k$ that represents trajectories of cluster $k$ well. 
+This can be done by fitting a GP
+that maximises the likelihood of the cluster data, but also in several
+other more sophisticated ways, should time permit. For the case of a single trajectory in
+a cluster, this problem is reduced to ordinary Gaussian
+process regression (GPR).
+
+\subsection{Arrival Time Prediction}
+Once motion patterns have been learned, arrival time $t$ can be predicted
+by modeling $P(t | x, y, M_k)$ for observed position $(x, y)$. The proposed solution to this is one GPR
+model per motion pattern, combined in a mixture to form the final
+predictive distribution
+\[P(t | x, y) = \sum_{k} P(t | x, y, M_k)P(M_k | x, y).\]
+
+\subsection{Event Detection}
+The final problem is automatically extracting events from motion
+patterns. This can be done by asserting a GP for the motion pattern,
+and searching over different kernel structures to maximise marginal
+likelihood. By searching over kernels which carry a specific meaning (in this case
+kernels would correspond to specific events), it is possible to
+detect events based on the kernel composition.
 
 \section{Aim}
 \label{sec:aim}
---This is subject to change. Currently written to cover most things
-talked about in the meeting from first day --
-
 The aim of this thesis project is to model motion patterns of public
 transport vehicles using Gaussian Processes (GPs), and use these
 models to make arrival time predictions with an accuracy that is
-competitive to current state of the art models. Furthermore, the project aims to
+competitive to current state-of-the-art models~\cite{Sinn2012Sep,
+  Gurmu2014, pang2018learning}. Furthermore, the project aims to
 detect specific characteristics from motion patterns, such as ``the
 driver had to emergency break'', or ``the vehicles speed was very slow'', to see if certain characteristics
 are more common in motion patterns where the vehicle is too early or
 too late, compared to publicly available time schedules. Finally, this
-project aims to investigate how irregular motion patterns can be
+project aims to investigate how outlier motion patterns can be
 detected.
 
 \section{Research questions}
 \label{sec:research-questions}
 
---this is subject to change. Currently written to cover most things
-talked about in the meeting from first day--
-
 \begin{enumerate}
-\item How can Gaussian Processes be used to capture the motion patterns
-  of trajectories?
+\item How can Gaussian processes be used to capture trajectory motion patterns?
 
-\item How can similar trajectories be clustered
-  into one representative motion pattern? 
+\item How can similar trajectories be clustered? 
   
-\item How can specific characteristics be automatically detected in a
+\item How can specific events be automatically detected in a
   motion pattern?
 
-\item How can irregular motion patterns be detected?
+\item How can outlier motion patterns be detected?
 \end{enumerate}
 
 %Observe that a very specific research question almost always
@@ -114,9 +197,9 @@ talked about in the meeting from first day--
 %The data used is provided by Östgötatrafiken AB and is not publicly
 %available. 
 
-This is where the main delimitations are described. For
-example, this could be that one has focused the study on a
-specific application domain or target user group. In the
-normal case, the delimitations need not be justified.
+%This is where the main delimitations are described. For
+%example, this could be that one has focused the study on a
+%specific application domain or target user group. In the
+%normal case, the delimitations need not be justified.
 
 \section{Report Outline}

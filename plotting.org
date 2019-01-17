@@ -1,0 +1,72 @@
+  :PROPERTIES:
+  :header-args:         :eval never-export
+  :header-args:bash:    :exports code
+  :header-args:elisp:   :exports code
+  :header-args:ipython: :exports both
+  :header-args:ipython: :session p
+  :END:
+
+#+BEGIN_SRC bash :dir ~/.venv/ :results drawer
+  pwd
+  virtualenv -p python3 msc
+#+END_SRC
+
+#+BEGIN_SRC elisp :results silent
+  (pyvenv-activate "~/.venv/msc")
+#+END_SRC
+
+#+BEGIN_SRC bash :results drawer :async t
+  pip install ipython jupyter_client jupyter_console numpy matplotlib pandas seaborn
+#+END_SRC
+
+#+NAME: motion-pattern-example
+#+BEGIN_SRC ipython
+  import seaborn as sns
+  import pandas as pd
+  import numpy as np
+  xx = np.linspace(0, 2, 15)
+  sigma = 0.1
+  traj1 =  [np.random.normal(x, scale=sigma) for x in xx]
+  traj2 =  [4 - np.random.normal(x*1.5, scale=sigma) for x in xx]
+  traj3 =  [4.4 - np.random.normal(x*1.5, scale=sigma) for x in xx]
+  traj4 =  [np.random.normal(x*1.1, scale=sigma) for x in xx]
+  df = pd.DataFrame(
+      np.vstack([traj1, traj2, traj3, traj4]).T, 
+      columns=['Trajectory 1', 'Trajectory 2', 'Trajectory 3', 'Trajectory 4'])
+
+  sns.scatterplot(data=df)
+#+END_SRC
+
+#+RESULTS: motion-pattern-example
+: # Out[71]:
+: : <matplotlib.axes._subplots.AxesSubplot at 0x7f5ac54c4198>
+[[file:./obipy-resources/R5wnpg.png]]
+[[file:./obipy-resources/ovd2st.png]]
+[[file:./obipy-resources/9vLYoF.png]]
+[[file:./obipy-resources/PJJqxa.png]]
+[[file:./obipy-resources/L6Qkw9.png]]
+
+#+NAME: system-subproblems
+#+BEGIN_SRC ipython
+  import pandas as pd
+  import numpy as np
+  from scipy.stats import norm, gamma
+  import matplotlib.pyplot as plt
+  plt.style.use('ggplot')
+
+  xx1 = np.linspace(0, , 14)
+  xx2 = np.linspace(0, 1.5, 10)
+  xx3 = np.linspace(0, 1.7, 10)
+  fig, ax = plt.subplots(1, 1)
+  ax.scatter(xx1, norm.pdf(xx1, -0.5))
+  ax.scatter(xx2, norm.pdf(xx2, -0.45, 0.6))
+  #ax.scatter(xx3, gamma.pdf(xx3, 0.5))
+  #ax.scatter(xx2, gamma.pdf(xx2, 0.5))
+
+#+END_SRC
+
+#+RESULTS: system-subproblems
+: # Out[68]:
+: : <matplotlib.collections.PathCollection at 0x7f5ac54895c0>
+[[file:./obipy-resources/9Bayv8.png]]
+[[file:./obipy-resources/u9obr4.png]]

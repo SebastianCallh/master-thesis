@@ -1,0 +1,394 @@
+% Created 2019-01-10 tor 12:10
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\author{Sebastian}
+\date{\today}
+\title{}
+\hypersetup{
+ pdfauthor={Sebastian},
+ pdftitle={},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.1 (Org mode 9.1.9)}, 
+ pdflang={English}}
+\begin{document}
+
+\tableofcontents
+
+\section{Master Thesis}
+\label{sec:orgab6ece1}
+
+\subsection{Startup meeting with Heintz}
+\label{sec:orge042a7d}
+\textit{<2019-01-07 mån>   }   
+\subsubsection{Initial project- Arrival time prediction with a motion pattern model using GPs}
+\label{sec:orgbba6c41}
+\begin{itemize}
+\item A working implementation exists from this years TDDE19
+\item Compare with vector field (position -> velocity), LSTM (from TDDE19)
+\end{itemize}
+
+\subsubsection{Areas of improvement from TDDE19}
+\label{sec:org3d4f12b}
+\begin{itemize}
+\item Sparse GPs
+\item Synchronisation. Interpolate posterior mean functions, cluster.
+\item Data augmentation
+\item Start and stop boundaries
+\item Multiple stop prediction
+\item Time table feature
+\end{itemize}
+
+\subsubsection{Notes}
+\label{sec:orgbc6a324}
+Heintz had some ideas on interesting problems.
+
+\begin{enumerate}
+\item Superimposing effects
+\label{sec:org2a87f74}
+The idea is in isolation train a nominal trajectory, one for rush
+hour, on for normal traffics, etc. And in some way superimpose
+the effects, letting us ask questions like ``what if we drive
+this way instead?'' or  ``what if it was winter?''.
+
+\item Knowledge extraction
+\label{sec:orgd70e2bf}
+Predicting arrival time is fine, but not novel
+enough. Fortunately, the GP model offers plenty of insight in the
+data generating process. 
+
+\begin{enumerate}
+\item Worst/best scenarios
+\label{sec:org484a53b}
+If the model was extended to work for
+multiple future stops it could give an estimate of the earliest
+known arrival time, and the latest known. 
+
+\item Pattern extraction
+\label{sec:orgc9735b7}
+It would be interesting to extract patterns from the
+data, both spatially and temporally. For instance: stop lights, 
+traffic jams, average speed (?), speed change. During what circumstances
+does the predictions have highest variance?
+\end{enumerate}
+\end{enumerate}
+
+\subsubsection{Post meeting talk}
+\label{sec:org9c3f87a}
+Some ideas that felt reasonable after talking to Tiger after the
+meeting with Heintz.
+\begin{itemize}
+\item Extract events using kernels/convolution over motion patterns
+\item Extending the application to multiple future stops
+\item Comparing predictive distribution to the actual arrival times,
+and the predictions of LSTM/vector field model
+\end{itemize}
+
+\subsection{Literature}
+\label{sec:orgdf29339}
+\subsubsection{Related work}
+\label{sec:orgd458d71}
+
+\subsection{Things to do}
+\label{sec:org3f5ea9e}
+\subsubsection{{\bfseries\sffamily TODO} Download pdfs of all papers and put them in shared documents}
+\label{sec:orgd0757b2}
+\subsubsection{{\bfseries\sffamily DONE} Mail Heintz and Tiger about TP meeting jan 18}
+\label{sec:orga93cec8}
+
+\subsubsection{{\bfseries\sffamily DONE} Figure out what the heck to do}
+\label{sec:orgfccb347}
+Talk to Mattias about this. Motivate what value this brings. What
+is novel about it?
+
+\subsubsection{{\bfseries\sffamily TODO} Conduct thorough literature study}
+\label{sec:org53bdf36}
+\begin{itemize}
+\item[{$\square$}] On the domain, motivate why the problem is interesting \hyperref[tiger-question-1]{question}
+This is currently motivated with a non-peer reviewed article on the importance on
+
+\item[{$\square$}] On related work, what has been done previously
+See individual \ref{sub-problems}
+
+\item[{$\square$}] On the chosen solution, motivate why this is valid
+\end{itemize}
+\begin{enumerate}
+\item Trajectory model
+\label{sec:orge69d015}
+GPR successfully used for trajectories \cite{Kim2011Nov}
+
+\item Synchronisation
+\label{sec:orgb234e6f}
+\item Similarity metric
+\label{sec:org82c3906}
+\item Clustering algorithm
+\label{sec:orgea0a93f}
+\item Regression model
+\label{sec:orgcab3a8c}
+\cite{Rasmussen-Williams-2006} claim GPs ``a serious competitor for real supervised learning applications''
+
+\begin{itemize}
+\item[{$\boxtimes$}] On the chosen solution, show how this improves on previous work
+Some ideas are: Explainability, find good or bad
+patterns/events, speed changes, stops
+Compared to LSTMs it comes with a posterior
+Outliers can be detected
+Best/worst case scenarios
+\end{itemize}
+\end{enumerate}
+
+\subsubsection{Write down potential solutions on different sub-problems}
+\label{sec:orgd2a7505}
+\label{sub-problems}
+\begin{enumerate}
+\item {\bfseries\sffamily TODO} Comparing trajectories
+\label{sec:orgf941a30}
+A distance metric, or some way or
+measuring closeness is needed for classical clustering algorithms. Motion
+patterns can be extracted from clusters.
+
+\begin{enumerate}
+\item Papers to read
+\label{sec:orgdf5b87c}
+That paper cited by Tiger, finding motion patterns in
+video frames. By constructing a frame for each segment, the same
+ideas should be applicable \cite{Kim2011Nov}
+
+\begin{itemize}
+\item \href{https://www.sciencedirect.com/science/article/abs/pii/S0031320318300621}{Structured dynamic time warping for continuous hand trajectory gesture recognition}
+\item \href{https://dl.acm.org/citation.cfm?id=3140017}{A Uniform Representation for Trajectory Learning Tasks}
+\end{itemize}
+
+\item Suggested solutions
+\label{sec:orgf16e770}
+\begin{enumerate}
+\item Constructing frames and using GPs to interpolate and synchronise
+\label{sec:org7ce7afc}
+After synchronised, the trajectories can be compared. This is
+preferably done using a symmetric distance metric which can
+then be used for clustering. \hyperref[tiger-questions]{what metrics?}
+
+\item Dynamic Time Warping (DTW)
+\label{sec:org12330aa}
+Doesn't actually synchronise, but computes shortest warp path
+for two trajectories. Has time and space complexity \(\mathcal{O}(NM)\)
+where \(N\), $\backslash$(M)$\backslash$ are the lengths of the sequences.
+
+\item Converting to SIT with fixed start and using sum of Euclidian distances
+\label{sec:orgaad7741}
+Based on \href{https://dl.acm.org/citation.cfm?id=3140017}{this paper}. With a fixed start the trajectories should
+be spatially synchronised. The speed of points could be
+interpolated.
+\end{enumerate}
+\end{enumerate}
+
+\item {\bfseries\sffamily TODO} Clustering trajectories
+\label{sec:orgb6455f1}
+The number of clusters are unknown. Spectral
+clustering can be used with a similarity metric, DBSCAN needs a
+proper distance metric.
+
+\begin{enumerate}
+\item Papers to read
+\label{sec:org6747b9d}
+\begin{itemize}
+\item \href{https://ieeexplore.ieee.org/abstract/document/1699726}{Comparison of Similarity Measures for Trajectory Clustering in Outdoor Surveillance Scenes}
+
+\item \href{https://ieeexplore.ieee.org/abstract/document/994784}{Discovering similar multidimensional trajectories}
+They present a new similarity measurement based on LCSS, which
+is designed to be resilient to noise. Is not a proper
+metric. Furthermore, they also highlight a lot of the problems
+with comparing trajectories.
+
+\item \href{../../shared/modeling-motion-patterns/vehicular-traffic-behavior-from-video.pdf}{Understanding vehicular traffic behaviour from video}
+Discusses several different unsupervised
+techniques. Trajectory based included, but also borrows ideas
+from topic modeling in NLP.
+
+\item \cite{Kim2011Nov}
+
+\item \href{../../shared/clustering-trajectories/learning-and-classification-of-trajectories-in-dynamic-scenes.pdf}{Learning and Classification of Trajectories in Dynamic Scenes}
+Old stuff that used HMM. But interesting approach of fitting a
+Gaussian mixture model to ``points of interest'' (POI), which could be
+the start and end of a trajectory in the scope of this
+thesis. These POI could be used to construct frames for
+synchronising trajectories.
+\end{itemize}
+
+\item Suggested solutions
+\label{sec:org85fc783}
+\begin{enumerate}
+\item Spectral Clustering
+\label{sec:org955f3ab}
+Can be used with DTW/LCSS as descibed in
+\cite{Zhang2006Aug}. Realistically, the evaluation would be done by hand
+picking trajectories and manually asserting correct behaviour.
+
+DTW does not guarantee that the triangle inequality holds. \hyperref[tiger-question-3]{question}
+
+\item Inverse GP Likelihood approach
+\label{sec:org9755729}
+The approach used in \cite{Kim2011Nov} and in the the project
+from this autumn. Based on having a probabilistic model for
+each motion pattern and classifying using maximum likelihood
+\end{enumerate}
+\end{enumerate}
+\item {\bfseries\sffamily TODO} Creating motion patterns
+\label{sec:orge1b49c5}
+\item {\bfseries\sffamily TODO} Classifying clusters
+\label{sec:orgcd24da4}
+\begin{enumerate}
+\item Papers to read
+\label{sec:org9ebd8c6}
+One of the ones Tiger sent. Go fetch
+
+\item Suggested solutions
+\label{sec:org8d45d2f}
+\begin{itemize}
+\item MAP with uniform cluster prior. Requires a probabilistic
+model. Assign to cluster \(k\) such that $\backslash$[
+\end{itemize}
+\argmax\_\{GP\(_{\text{k]}}\)\frac{1}{n}\(\sum_{\text{i=i}}^{\text{n}}\) P(GP\(_{\text{k}}\)(x\(_{\text{i}}\), y\(_{\text{i}}\)) | GP\(_{\text{k}}\))P\(_{\text{k}}\)
+$\backslash$]
+\end{enumerate}
+
+\item {\bfseries\sffamily TODO} Extending to multiple stops
+\label{sec:org6770255}
+\begin{enumerate}
+\item Papers to read
+\label{sec:org6aa9936}
+Theory behind simple additive model using Laplace approximation \cite{Bishop2006Aug}
+
+\item Suggested solutions
+\label{sec:org5135482}
+\begin{enumerate}
+\item An additive model using Laplace approximation in posterior
+\label{sec:org6eb1558}
+mode. Everything would be normally distributed and computable in
+closed form. The posterior arrival time of segment \(k+1\) would
+be \(AT_{k}\) + \(AT_{k+1}\) where \(AT_{k}\) and \(AT_{k+1}\)
+are the Laplace approximations in the mode of the posteriors 
+for the corresponding model \(\mathcal{M}\). For \(\mathcal{M}_{k}\) the posterior is
+computed for the current state, and for \(\mathcal{M}_{k+1}\) it
+is computed either for the first data point in the frame (if
+frames are implemented) or for the mean value for the first data
+point in the \(k+1\) segment. This would require a model for
+\(P(\(\mathcal{M}_{k+1}\) | \(\mathcal{M}_{k}\)), which could be
+as simple as \(\mathcal{M}_{k+1} \sim
+       Dir(\alpha_{\mathcal{M}_{k}})\), where
+\(\alpha_{\mathcal{M}_{k}}\) is acquired by counting and
+normalising model transitions. This would be meaningless without
+proper clustering, unfortunately.
+\end{enumerate}
+\end{enumerate}
+
+\item {\bfseries\sffamily TODO} Extracting events from motions patterns
+\label{sec:org8bb3f7d}
+\begin{enumerate}
+\item Papers to read
+\label{sec:org6299eb1}
+
+\item Suggested solutions
+\label{sec:org18993d5}
+Convolution/correlation from hand-crafted event-kernels \cite{smith1997scientist}
+\end{enumerate}
+
+\item {\bfseries\sffamily TODO} Model evaluation
+\label{sec:org5d66c4f}
+\begin{enumerate}
+\item Arrival time prediction
+\label{sec:org0528f61}
+\begin{itemize}
+\item Against vector field model \cite{Tran2014Jun}
+\item Against TDDE19 implementation of \cite{RNNBusPredictions}
+\item Use metrics MAE/MAPE
+\end{itemize}
+
+\item Motion Pattern Clustering
+\label{sec:orgc6e93de}
+\begin{itemize}
+\item If pattern extraction works, check if they contain same patterns?
+\item ?
+\end{itemize}
+\end{enumerate}
+
+\item {\bfseries\sffamily TODO} Outlier detection
+\label{sec:org421afc0}
+\end{enumerate}
+
+\subsubsection{{\bfseries\sffamily TODO} Write thesis plan}
+\label{sec:org5321a22}
+Think in terms of a divide-and-conquer approach. What problems
+exist and in what order do they need to be solved?
+
+\begin{itemize}
+\item[{$\square$}] Introduction
+\item[{$\square$}] Related work
+\item[{$\square$}] Time plan
+\end{itemize}
+
+\subsection{Questions}
+\label{sec:orgfe50123}
+A place to quickly jot down questions so they are not forgotten.
+
+\subsubsection{For Tiger}
+\label{sec:org293258a}
+\label{tiger-questions}
+This section contain questions for Mattias Tiger, supervisor of
+this thesis project.
+
+\begin{enumerate}
+\item Formulation to motivate novelty of project
+\label{sec:org643388d}
+\label{tiger-question-1}
+
+\begin{enumerate}
+\item Question
+\label{sec:org00e0d79}
+It is sort of doing arrival time prediction, but also motion pattern extraction but
+also analysis of said motion patterns. Most papers found only
+prove a single point, while this project builds upon several techniques.
+
+What is the problem though? How should this be formulated in the
+thesis? Is it ``Finding ways to improve public transport routes'', 
+``Learning motion pattern from trajectories'', ``Motion
+pattern analysis'', ``\ldots{}''?.
+
+\item Answer
+\label{sec:org2a03563}
+Making a competitive GP model is interesting on it's
+own. Further motivating this with the ways the motion patterns
+and predictions can be used. He also said to write more than reasonable 
+think on applications of the models.
+\end{enumerate}
+
+
+\item What distances are available for trajectories?
+\label{sec:orgf83e3e8}
+\label{tiger-question-3}
+Spectral clustering can be done with similarity measures that are
+not proper distances.
+\end{enumerate}
+
+\subsubsection{For Heintz}
+\label{sec:org78a59d1}
+This section contain questions for Fredrik Heintz, examiner of
+this thesis project.
+
+\subsection{Computer SSH}
+\label{sec:org15a4215}
+remote-und.ida.liu.se li23-[1|4]
+\end{document}

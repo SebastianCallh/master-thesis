@@ -1,0 +1,60 @@
+* Log
+  This document is for logging the day-by-day progress of my master's thesis.
+
+** Week 2
+*** <2019-01-07 mon>
+    The first day. Had [[file:./msc.org::*Startup meeting with Heintz][a startup meeting.]]
+
+*** <2019-01-08 tis>
+    Met with Tiger, asked him [[file:./msc.org::tiger-question-1][about the structure of the thesis plan]]. 
+    Wrote a draft introduction and aim chapter.
+*** <2019-01-09 ons>
+    Spent most of the time reading on clustering and identifying
+    motion patterns. Some stuff from the
+    computer vision field: cite:Zhang2006Aug, cite:Tran2014Jun, and
+    some stuff I got from Tiger:
+    [[file:../../shared/fusion2015-tiger.pdf]],
+    [[file:../../shared/overlapping-mixtures-of-gps.pdf]].
+*** <2019-01-10 tor>
+    Got access to the "office"! One week until TP should be done so I
+    started writing on related work.
+
+*** <2019-01-11 fre>
+    Wrote related work on arrival time prediction (a couple of LSTMs). Continued writing
+    related work for trajectory learning using GPs. There are issues with
+    understanding [[file:../../shared/modeling-motion-patterns/energy-consumption-profile-using-gps.pdf][this paper]]
+
+*** <2019-01-12 lör>
+    Wrote about the inverse Gaussian process in related work.
+
+
+** Week 3
+*** <2019-01-14 mån>
+     Tomorrow is hand in to Tiger for feedback on TP. I've been reading
+     and writing a lot on the topic modeling approach to clustering
+     trajectories. HDP, LDA seem central and different improvements
+     have been made on them, like Dual-HDP, DDual-HDP, LC-LDA.
+
+*** <2019-01-15 tis>
+    Had a feedback meeting with Tiger. Got a lot of good feedback. He
+    also told me to write a pitch of the applications use, and to
+    clearly address all sub-problems of the
+    implementation. Additionally I should make a time plan for the
+    projects milestones, but can wait with the exact week-to-week
+    details until after the meeting with Heintz on Friday.
+
+*** <2019-01-16 ons>
+    Finished a draft on the model pitch and addressing the
+    sub-problems of the application. Also wrote the related work
+    section on event detection based on automatic kernel structure discovery.
+    Tomorrow I will proof read and write down a rough time plan for
+    the project. 
+
+*** <2019-01-17 tor>
+    Meeting with Heintz tomorrow. Proof read the entire thing and fixed
+    grammatical mistakes. Also made a document for the time plan with
+    the final deadlines in. The rest of the plan will be completed
+    after the meeting with Heintz.
+
+*** <2019-01-18 fri>
+    Meeting with Heintz today.
