@@ -1,0 +1,53 @@
+\chapter{Background}
+This chapter describes theoretic results that this thesis is based
+on. Should the reader already be familiar with machine learning, and
+in particular Gaussian Processes, this chapter can be safely skipped.
+
+\section{Trajectory Data}
+Explain the difficulties of comparing them
+
+\section{Observed Machine Learning}
+Explain core concept
+Explain MAP
+
+\section{Gaussian Processes}
+A GP generalises a multivariate normal distribution, and can be seen
+as a distribution over functions, completely defined by its
+mean function $m(x)$ and covariance function $k(x, x',
+\theta)$~\cite{Rasmussen-Williams-2006}. Here, $x$ and $x'$ are
+elements in the domain of modeled functions, and $\theta$ a
+vector of hyper-parameters for the covariance function. For any input
+vector $x$, the output $y$ is assumed jointly normally distributed according to
+\begin{equation}
+  \label{eq:gp}
+  y = f(x) \sim \mathcal{N}(\mu(x), \Sigma(x))
+\end{equation}
+where
+\begin{equation}
+  \label{eq:gp-mean-function}
+  \mu(x) = m(x) + K(x, \textbf{x})\textbf{V}^{-1}{(y-m(x))}^{T},
+\end{equation}
+\begin{equation}
+  \label{eq:gp-covariance-function}
+  \Sigma(x) = K(x, x) + \sigma^{2}_n\textbf{I} - \textbf{K}(x, \textbf{x})\textbf{V}^{-1}{\textbf{K}(x, \textbf{x})}^{T},
+\end{equation}
+and $\textbf{K}$ is the gram matrix with elements $K_{ij} = k(x_i, x_j)$ and $\textbf{V}
+= K(x, x) + \sigma_n^2I$.
+The mean function $m(x)$ can be assumed to be $m(x) = 0$
+without loss of generality, making the covariance function $k(x, x', \theta)$
+the only free parameter. Picking a covariance function represents a prior
+belief on how values close in $y$ are related, expressed in $x$. 
+Training a GP is typically done using maximum likelihood
+estimation. That is, the GP parameters $\theta$ are optimised to
+maximise the data likelihood. Unfortunately,
+there is no expression for the data likelihood in closed form, so
+iterative methods have to be used. Because the likelihood function is
+non-convex, there is a high risk of finding local minimas,
+so random restarts are typically required to find a good $\theta$.
+
+\section{Kernel as Priors}
+Talk about different kernels and what prior beliefs they represent
+
+\subsection{Gaussian Processes Regression}
+
+\subsection{Structure Discovery Using Gaussian Processes}

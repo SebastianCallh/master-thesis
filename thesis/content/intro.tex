@@ -100,11 +100,12 @@ The first step in the system requires a way of comparing
 trajectories, which is not straight-forward. The reason for this is that trajectories
 can have different lengths and unevenly spaced observations.
 The proposed way of doing this is by \textit{synchronising} them,
-by learning a GP for \(f(x, y) \mapsto \tau\), where \(\tau = [0, 1]\), and then 
-two inverse GPs \(g_x(\tau) \mapsto x\), \(g_y(\tau) \mapsto y\). A similarity
+by modeling the trajectories spatial position as two independent GPs \(f_x(\tau) \mapsto
+x\), \(f_y(\tau) \mapsto y\) for $\tau = [0,1]$, and learning an
+inverse GP \(f(x, y) \mapsto \tau\). A similarity
 metric for model \(M_k\) is then given by the likelihood \(P(u, v | M_k)\), where
-$u$ and $v$ are given by the function compositions \(u = (g_{y} \circ f)(x, y)\),
-\(v = (g_{x} \circ f)(x, y)\).
+$u$ and $v$ are given by the function compositions \(u = (f_{y} \circ g)(x, y)\),
+\(v = (f_{x} \circ g)(x, y)\).
 
 %and then using the likelihood of GP models as a
 %similarity metric. The synchronisation step can also be done by GPs,
@@ -162,9 +163,10 @@ detected.
 \label{sec:research-questions}
 
 \begin{enumerate}
-\item How can Gaussian processes be used to capture trajectory motion patterns?
+\item How can Gaussian processes be used to capture trajectory motion
+  patterns, such that arrival time predictions based on these patterns minimise MAE?
 
-\item How can similar trajectories be clustered? 
+\item How can similar trajectories be clustered, such that ...?
   
 \item How can specific events be automatically detected in a
   motion pattern?
@@ -194,6 +196,10 @@ detected.
 
 \section{Delimitations}
 \label{sec:delimitations}
+The project limits itself to arrival time predictions on consecutive
+but stops. Predictions for bus stops several steps ahead will
+consequently not be considered.
+
 %The data used is provided by Östgötatrafiken AB and is not publicly
 %available. 
 

@@ -27,7 +27,6 @@
 *** <2019-01-12 lör>
     Wrote about the inverse Gaussian process in related work.
 
-
 ** Week 3
 *** <2019-01-14 mån>
      Tomorrow is hand in to Tiger for feedback on TP. I've been reading
@@ -57,4 +56,39 @@
     after the meeting with Heintz.
 
 *** <2019-01-18 fri>
-    Meeting with Heintz today.
+    Had the with Heintz. He thought the plan was excellent and well
+    written! The plan is to implement the proposed system and then
+    evaluate improvements. To do this the evaluation and problem formulation
+    need to be precisely formulated.
+    After thinking about this for a while, it is really hard to
+    measure quality of clustering.
+*** <2019-01-19 lör>
+    Put down some theory on GPs from the TDDE19 project and changed
+    some notation on the inverse GP synchronisation based on suggestions
+    from Tiger.
+
+
+** Week 4
+*** <2019-01-21 mån>
+    I should make a time plan today. The first thing to put in in till
+    be what to do this week, where there are mainly two options. I
+    could either write the background chapter, or I could start with
+    deriving the model. Deriving the model is harder, and more critical
+    to the project so I think it will have to be that. This means that
+    I have to settle on a specific model.
+
+    After thinking a lot and talking to Tiger, the model I will go for
+    is one where every trajectory \(T_{i}\) is modeled as \(f_{i} : \tau_{i} \mapsto s\)
+    accompanied with \(g_{i} : \s \mapsto \tau_{i}\) and \(h_{i} :
+    \tau_{i} \mapsto t\). That is, every trajectory gets a
+    synchronisation GP that maps to a space where they can be compared
+    with every other GP.
+  
+*** <2019-01-22 tis>
+    I keep wrestling with notation. There is quite a lot of it
+    floating around, and denoting a specific trajectory, and new
+    observations in particular is difficult.
+
+    After finishing a draft describing the synchronisation model I can
+    at least start addressing the problems with learning it. In
+    particular, the data augmentation will be described.

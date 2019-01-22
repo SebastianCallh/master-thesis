@@ -1,0 +1,24 @@
+* Introduction                                                        :intro:
+  The introduction shall be divided into these sections:
+
+** Motivation                                                    :motivation:
+   As the years pass, more and more people move into urban areas and this
+   increases the importance of sustainable urban development. A greater
+   number of inhabitants puts higher pressure on the public
+   transportation systems, which makes their efficiency increasingly
+   important.~\cite{kondepudi2014smart} 
+   
+   To offer a better service, public traffic providers use systems
+   that predict arrival times of buses, trains and similar vehicles. The
+   accuracy of these predictions are paramount, since many people depend
+   on these services and erroneous predictions reflects badly on the
+   public traffic providers. 
+   
+   Various machine learning algorithms have been applied with great
+   promise to predict arrival time  cite:Kim2011Nov, cite:RNNBusPredictions ~\cite{zheng2013urban, kim2017probabilistic, pang2018learning,
+   Nguyen2018Jun}, although it is still an active research area.
+
+** Aim                                                                 :aim:
+** Research questions                                             :questions:
+** Delimitations                                              :delimitations:
+** Report outline                                                   :outline:

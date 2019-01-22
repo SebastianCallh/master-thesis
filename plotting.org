@@ -70,3 +70,13 @@
 : : <matplotlib.collections.PathCollection at 0x7f5ac54895c0>
 [[file:./obipy-resources/9Bayv8.png]]
 [[file:./obipy-resources/u9obr4.png]]
+
+#+NAME: stop-compression
+#+BEGIN_SRC ipython
+  x = 1
+  x
+#+END_SRC
+
+#+RESULTS: stop-compression
+: # Out[1]:
+: : 1

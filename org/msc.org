@@ -76,283 +76,332 @@
      Sure why not. Make a running example for the application in introduction.
 
 ** Thesis plan meeting with Heintz
+   <2019-01-18 fre>
+
+   Heintz was pleased with the plan. Some important things are that
+   research questions are not easily quantifiable. Problems need to be
+   more precisely formulated. He also discussed the possibility to
+   generate data for different models. This could be possible with 
+   
+   A lot of ideas about more specific problems also surfaced.
+**** Evaluations
+     - Predictions with low residual variance
+     - Probability of arriving too late (w.r.t. time tables)
+     - Prediction variance as a function of number of observations
+
+* Problem formulation
+    <<sub-problems>>
+**** DONE Arrival time prediction
+     CLOSED: [2019-01-18 fre 10:54]
+     Use MAE/MAPE and evaluate against
+     - vector field model cite:Tran2014Jun
+     - TDDE19 implementation of cite:Pang2018Oct
+****** State-of-the-art-models
+	- cite:Sinn2012Sep
+	- cite:Pang2018Oct
+	- cite:Gurmu2014
+
+
+**** TODO Comparing trajectories
+     A distance metric, or some way or
+     measuring closeness is needed for classical clustering algorithms. Motion
+     patterns can be extracted from clusters.
+
+***** Papers to read
+      - cite:Kim2011Nov
+      That paper cited by Tiger, finding motion patterns in
+      video frames. By constructing a frame for each segment, the same
+      ideas should be applicable 
+
+      - [[https://www.sciencedirect.com/science/article/abs/pii/S0031320318300621][Structured dynamic time warping for continuous hand trajectory gesture recognition]]
+      - [[https://dl.acm.org/citation.cfm?id=3140017][A Uniform Representation for Trajectory Learning Tasks]]
+      - cite:Pimentel2013Sep
+	This is the \exact\ same thing as Tiger does, using GP model likelihoods
+	as similarity measures, although clustering by
+	taking the mean of the trajectories local mean and variance,
+	so they don't handle uncertainty properly.
+	
+      - cite:Tiger2018Jun
+
+***** Suggested solutions
+****** Constructing frames and using GPs to interpolate and synchronise
+       After synchronised, the trajectories can be compared. This is
+       preferably done using a symmetric distance metric which can
+       then be used for clustering. [[tiger-questions][what metrics?]]
+
+****** Dynamic Time Warping (DTW)
+       Doesn't actually synchronise, but computes shortest warp path
+       for two trajectories. Has time and space complexity \(\mathcal{O}(NM)\)
+       where \(N\), \(M)\ are the lengths of the sequences.
+
+****** Converting to SIT with fixed start and using sum of Euclidian distances
+       Based on [[https://dl.acm.org/citation.cfm?id=3140017][this paper]]. With a fixed start the trajectories should
+       be spatially synchronised. The speed of points could be
+       interpolated.
+
+***** Evaluation
+      Based on system performance
+
+**** TODO Modeling Motion patterns
+     A lot of approaches have been explored. Major areas are
+     classical clustering with DTW/LCSS, GPs, HMMs, and topic models. 
+
+***** Classical clustering
+      - [[https://ieeexplore.ieee.org/abstract/document/1699726][Comparison of Similarity Measures for Trajectory Clustering in Outdoor Surveillance Scenes]]
+	<<comp-sim-outdoors>>
+
+      - [[https://ieeexplore.ieee.org/abstract/document/994784][Discovering similar multidimensional trajectories]]
+	They present a new similarity measurement based on LCSS, which
+	is designed to be resilient to noise. Is not a proper
+	metric. Furthermore, they also highlight a lot of the problems
+	with comparing trajectories.
+     
+***** Hidden Markov Models
+
+      - cite:Suzuki2007Oct
+	Old stuff that also use HMM.
+
+      - cite:Morris2008Sep
+	Old stuff that used HMM. But interesting approach of fitting a
+	Gaussian mixture model to "points of interest" (POI), which could be
+	the start and end of a trajectory in the scope of this
+	thesis. These POI could be used to construct frames for
+	synchronising trajectories.
+
+***** Gaussian Processes
+
+      - [[file:../../shared/modeling-motion-patterns/vehicular-traffic-behavior-from-video.pdf][Understanding vehicular traffic behaviour from video]]
+	Discusses several different unsupervised
+	techniques. Trajectory based included, but also borrows ideas
+	from topic modeling in NLP.
+
+      - cite:Kim2011Nov 
+	GP frame paper
+
+      - cite:Wang2013Jan
+	Did a survey of clustering metrics in 2013 on vehicular data,
+	not outdoors camera imagery. It seems like a
+	more useful version of [[comp-sim-outdoors][this]]. They conclude all measurements
+	are different and none objectively better.
+
+      - cite:Morris2013Sep
+	Talks about a great deal of different models for vehicular
+	trajectories. One interesting approach is different types of
+	topic modeling to cluster trajectories. Contains a lot of references.
+
+      - cite:Leysen2016Sep
+	They claim to have a GP that can fit to several functions. I
+	am not sure how their model works with model variance. 
+
+      - cite:Goli2018Jun 
+	Modern reference of GPs use in a Connected Vehicles environment
+
+      - cite:Campo2017Aug
+	Does some discretisation and then GPs for modeling
+	trajectories of surveillance video
+ 
+      - cite:Tiger2015Jul
+	Inverse GP
+	
+      - [[file:../../shared/clustering-trajectories/automatic-model-construction-with-Gaussian-processes.pdf][Automatic model construction with GPs (Phd thesis)]]
+	Describes clustering using GPs by warping GMMs. Has no
+	closed form for its predictive distribution, but that's should
+	be fine since we only want to model different behaviours.  
+	"Third, we combine Gaussian processes with the Dirichlet
+	process to produce the warped mixture model: a Bayesian clustering
+	model having nonparametric cluster shapes, and a corresponding
+	latent space in which each cluster has an interpretable parametric form."
+	"good representations of data manifolds are invariant in
+	directions orthogonal to the data manifold" 
+
+***** Kernel Methods
+	- cite:Akbarzadeh2015Sep
+	  Seems to do something similar to TDDE19 with comparing
+          previously observed trajectories. Tackles the problem of
+          predicting future motion patterns, not necessarily arrival
+          time so performance metrics does not exactly translate
+          (although arrival time could be derived from their approach)
+
+***** Topic Models
+       - cite:Zou2016Apr
+	 Read this! It's on an adapted LDA model for modeling motion patterns
+
+       - cite:Wang2011
+	 Chapter from a book, seems like it gives a bird eye view. Uses topic modeling on surveillance video to find action sequences
+
+       - Zou2014Aug
+	 Read this! It's something called (Belief Based) Correlated Topic Models
+
+***** Suggested solutions
+****** Spectral Clustering
+       Can be used with DTW/LCSS as descibed in
+       cite:Zhang2006Aug. Realistically, the evaluation would be done by hand
+       picking trajectories and manually asserting correct behaviour.
+
+       DTW does not guarantee that the triangle inequality holds. [[tiger-question-3][question]]
+
+****** Inverse GP Likelihood approach
+       The approach used in cite:Kim2011Nov and in the the project
+       from this autumn. Based on having a probabilistic model for
+       each motion pattern and classifying using maximum likelihood
+****** Learn numbers of clusters then the GP "overlapping mixtures of GPs"?
+****** Warped GMM from the doctor thesis?
+****** Only temporal aspect is important
+       Cluster based only on temporal data, which is given once every
+       second and could possibly be assumed to be synchronised. Then
+       assign new trajectories based on this. (Very domain specific though)
+
+***** Evaluation
+      Based on system performance
+      
+
+**** TODO Classifying clusters
+***** Papers to read
+      One of the ones Tiger sent. Go fetch
+
+***** Suggested solutions
+      - MAP with uniform cluster prior. Requires a probabilistic
+	model. Assign to cluster \(k\) such that \[
+      \argmax_{GP_{k]}\frac{1}{n}\sum_{i=i}^{n} P(GP_{k}(x_i, y_i) | GP_{k})P_{k}
+      \] 
+
+***** Evaluation
+      Based on system performance
+
+**** TODO Extracting events from motion patterns
+***** Papers to read
+      - cite:duvenaud2013structure
+	The idea of searching over kernels to detect structure in data.
+
+***** Suggested solutions
+      Convolution/correlation from hand-crafted event-kernels cite:smith1997scientist
+      Automated statistician style cite:duvenaud2013structure
+
+***** Evaluation
+      ???
+     
+**** TODO Outlier detection
+***** Evaluation
+      Based on system performance
+     
+**** ABANDONED Extending to multiple stops
+     CLOSED: [2019-01-18 fre 10:50]
+     This task is put under delimitations.
+
+***** Papers to read
+      Theory behind simple additive model using Laplace approximation cite:Bishop2006Aug
+      The one I found this autumn on road networks as Bayesian networks
+
+***** Suggested solutions
+****** An additive model using Laplace approximation in posterior
+       mode. Everything would be normally distributed and computable in
+       closed form. The posterior arrival time of segment \(k+1\) would
+       be \(AT_{k}\) + \(AT_{k+1}\) where \(AT_{k}\) and \(AT_{k+1}\)
+       are the Laplace approximations in the mode of the posteriors 
+       for the corresponding model \(\mathcal{M}\). For \(\mathcal{M}_{k}\) the posterior is
+       computed for the current state, and for \(\mathcal{M}_{k+1}\) it
+       is computed either for the first data point in the frame (if
+       frames are implemented) or for the mean value for the first data
+       point in the \(k+1\) segment. This would require a model for
+       \(P(\(\mathcal{M}_{k+1}\) | \(\mathcal{M}_{k}\)), which could be
+       as simple as \(\mathcal{M}_{k+1} \sim
+       Dir(\alpha_{\mathcal{M}_{k}})\), where
+       \(\alpha_{\mathcal{M}_{k}}\) is acquired by counting and
+       normalising model transitions. This would be meaningless without
+       proper clustering, unfortunately.
 
 * Things to do
-** DONE Read these
-   CLOSED: [2019-01-17 tor 11:46]
-   Super important to know that these are actually valid
-   state-of-the-art in arrival time prediction as claimed by Pang et al.
-   - cite:Sinn2012Sep
-   - cite:Pang2018Oct
-   - cite:Gurmu2014
+** Thesis Plan
+*** DONE Read these
+    CLOSED: [2019-01-18 fre 10:26]
+    Super important to know that these are actually valid
+    state-of-the-art in arrival time prediction as claimed by Pang et al.
+    - cite:Sinn2012Sep
+    - cite:Pang2018Oct
+    - cite:Gurmu2014
 
-** DONE Find papers on  inverse GP synchronisation 
-   CLOSED: [2019-01-17 tor 11:46]
-     - find "Gaussian process based motion pattern recognition with
-       sequential local models", by Tiger and Heintz
-     - some paper on people walking over a street and an iterative
-       trajectory flow model. Should be cited in previously mentioned
-       paper by Tiger and Heintz
+*** DONE Find papers on  inverse GP synchronisation
+    CLOSED: [2019-01-17 tor 11:46]
+      - find "Gaussian process based motion pattern recognition with
+	sequential local models", by Tiger and Heintz
+      - some paper on people walking over a street and an iterative
+	trajectory flow model. Should be cited in previously mentioned
+	paper by Tiger and Heintz
 
-** DONE Read automated statistician
-   CLOSED: [2019-01-17 tor 11:45]
-   Is needed to reference event detection
+*** DONE Read automated statistician
+    CLOSED: [2019-01-17 tor 11:45]
+    Is needed to reference event detection
 
-** TODO Download pdfs of all papers and put them in shared documents
-** DONE Mail Heintz and Tiger about TP meeting jan 18
-   CLOSED: [2019-01-07 mån 17:20]
+*** ABANDONED Download pdfs of all papers and put them in shared documents
+    CLOSED: [2019-01-18 fre 10:26]
+*** DONE Mail Heintz and Tiger about TP meeting jan 18
+    CLOSED: [2019-01-07 mån 17:20]
    
-** DONE Figure out what the heck to do
-   CLOSED: [2019-01-07 mån 16:16]
-   Talk to Mattias about this. Motivate what value this brings. What
-   is novel about it?
+*** DONE Figure out what the heck to do
+    CLOSED: [2019-01-07 mån 16:16]
+    Talk to Mattias about this. Motivate what value this brings. What
+    is novel about it?
 
-** DONE Conduct thorough literature study
-   CLOSED: [2019-01-17 tor 11:45]
-   - [X] On the domain, motivate why the problem is interesting [[tiger-question-1][question]]
-     This is currently motivated with a non-peer reviewed article 
+*** DONE Conduct thorough literature study
+    CLOSED: [2019-01-17 tor 11:45]
+    - [X] On the domain, motivate why the problem is interesting [[tiger-question-1][question]]
+      This is currently motivated with a non-peer reviewed article 
 
-   - [X] On related work, what has been done previously
-     See individual [[sub-problems]]
+    - [X] On related work, what has been done previously
+      See individual [[sub-problems]]
 
-   - [X] On the chosen solution, motivate why this is valid
-     Is is currently backed by the related work section, bu not
-     explicitly stated.
-***** Arrival time prediction
-***** Trajectory model
-      GPR successfully used for trajectories cite:Kim2011Nov
+    - [X] On the chosen solution, motivate why this is valid
+      Is is currently backed by the related work section, bu not
+      explicitly stated.
+****** Arrival time prediction
+****** Trajectory model
+       GPR successfully used for trajectories cite:Kim2011Nov
 
-***** Synchronisation
-***** Similarity metric
-***** Clustering algorithm
-***** Regression model
-      cite:Rasmussen-Williams-2006 claim GPs "a serious competitor for real supervised learning applications"
+****** Synchronisation
+****** Similarity metric
+****** Clustering algorithm
+****** Regression model
+       cite:Rasmussen-Williams-2006 claim GPs "a serious competitor for real supervised learning applications"
 
-   - [X] On the chosen solution, show how this improves on previous work
-     Some ideas are: Explainability, find good or bad
-     patterns/events, speed changes, stops
-     Compared to LSTMs it comes with a posterior
-     Outliers can be detected
-     Best/worst case scenarios
+    - [X] On the chosen solution, show how this improves on previous work
+      Some ideas are: Explainability, find good or bad
+      patterns/events, speed changes, stops
+      Compared to LSTMs it comes with a posterior
+      Outliers can be detected
+      Best/worst case scenarios
 
-** Write down potential solutions on different sub-problems
-   <<sub-problems>>
+*** DONE Write down potential solutions on different sub-problems
+*** DONE Write thesis plan
+    CLOSED: [2019-01-17 tor 11:44] DEADLINE: <2019-01-18 fre>
 
-*** TODO Comparing trajectories
-    A distance metric, or some way or
-    measuring closeness is needed for classical clustering algorithms. Motion
-    patterns can be extracted from clusters.
+    Think in terms of a divide-and-conquer approach. What problems
+    exist and in what order do they need to be solved?
 
-**** Papers to read
-     - cite:Kim2011Nov
-     That paper cited by Tiger, finding motion patterns in
-     video frames. By constructing a frame for each segment, the same
-     ideas should be applicable 
+    - [X] Introduction
+      For final thesis: Also note down novelty of the thesis project.
 
-     - [[https://www.sciencedirect.com/science/article/abs/pii/S0031320318300621][Structured dynamic time warping for continuous hand trajectory gesture recognition]]
-     - [[https://dl.acm.org/citation.cfm?id=3140017][A Uniform Representation for Trajectory Learning Tasks]]
-     - cite:Pimentel2013Sep
-       This is the \exact\ same thing as Tiger does, using GP model likelihoods
-       as similarity measures, although clustering by
-       taking the mean of the trajectories local mean and variance,
-       so they don't handle uncertainty properly.
-	
-     - cite:Tiger2018Jun
+    - [X] Related work
+    - [X] Time plan
 
-**** Suggested solutions
-***** Constructing frames and using GPs to interpolate and synchronise
-      After synchronised, the trajectories can be compared. This is
-      preferably done using a symmetric distance metric which can
-      then be used for clustering. [[tiger-questions][what metrics?]]
+** Project start
+*** TODO Review intro section and the use of the phrase "system"
+*** TODO Write delimitations
+    Only sequential stops are considered.
 
-***** Dynamic Time Warping (DTW)
-      Doesn't actually synchronise, but computes shortest warp path
-      for two trajectories. Has time and space complexity \(\mathcal{O}(NM)\)
-      where \(N\), \(M)\ are the lengths of the sequences.
-
-***** Converting to SIT with fixed start and using sum of Euclidian distances
-      Based on [[https://dl.acm.org/citation.cfm?id=3140017][this paper]]. With a fixed start the trajectories should
-      be spatially synchronised. The speed of points could be
-      interpolated.
-
-*** TODO Modeling Motion patterns
-    A lot of approaches have been explored. Major areas are
-    classical clustering with DTW/LCSS, GPs, HMMs, and topic models. 
-
-**** Classical clustering
-     - [[https://ieeexplore.ieee.org/abstract/document/1699726][Comparison of Similarity Measures for Trajectory Clustering in Outdoor Surveillance Scenes]]
-       <<comp-sim-outdoors>>
-
-     - [[https://ieeexplore.ieee.org/abstract/document/994784][Discovering similar multidimensional trajectories]]
-       They present a new similarity measurement based on LCSS, which
-       is designed to be resilient to noise. Is not a proper
-       metric. Furthermore, they also highlight a lot of the problems
-       with comparing trajectories.
-     
-**** Hidden Markov Models
-
-     - cite:Suzuki2007Oct
-       Old stuff that also use HMM.
-
-     - cite:Morris2008Sep
-       Old stuff that used HMM. But interesting approach of fitting a
-       Gaussian mixture model to "points of interest" (POI), which could be
-       the start and end of a trajectory in the scope of this
-       thesis. These POI could be used to construct frames for
-       synchronising trajectories.
-
-**** Gaussian Processes
-
-     - [[file:../../shared/modeling-motion-patterns/vehicular-traffic-behavior-from-video.pdf][Understanding vehicular traffic behaviour from video]]
-       Discusses several different unsupervised
-       techniques. Trajectory based included, but also borrows ideas
-       from topic modeling in NLP.
-
-     - cite:Kim2011Nov 
-       GP frame paper
-
-     - cite:Wang2013Jan
-       Did a survey of clustering metrics in 2013 on vehicular data,
-       not outdoors camera imagery. It seems like a
-       more useful version of [[comp-sim-outdoors][this]]. They conclude all measurements
-       are different and none objectively better.
-
-     - cite:Morris2013Sep
-       Talks about a great deal of different models for vehicular
-       trajectories. One interesting approach is different types of
-       topic modeling to cluster trajectories. Contains a lot of references.
-
-     - cite:Leysen2016Sep
-       They claim to have a GP that can fit to several functions. I
-       am not sure how their model works with model variance. 
-
-     - cite:Goli2018Jun 
-       Modern reference of GPs use in a Connected Vehicles environment
-
-     - cite:Campo2017Aug
-       Does some discretisation and then GPs for modeling
-       trajectories of surveillance video
- 
-     - cite:Tiger2015Jul
-       Inverse GP
-	
-     - [[file:../../shared/clustering-trajectories/automatic-model-construction-with-Gaussian-processes.pdf][Automatic model construction with GPs (Phd thesis)]]
-       Describes clustering using GPs by warping GMMs. Has no
-       closed form for its predictive distribution, but that's should
-       be fine since we only want to model different behaviours.  
-       "Third, we combine Gaussian processes with the Dirichlet
-       process to produce the warped mixture model: a Bayesian clustering
-       model having nonparametric cluster shapes, and a corresponding
-       latent space in which each cluster has an interpretable parametric form."
-       "good representations of data manifolds are invariant in
-       directions orthogonal to the data manifold" 
-
-**** Kernel Methods
-       - cite:Akbarzadeh2015Sep
-	 Seems to do something similar to TDDE19 with comparing
-         previously observed trajectories. Tackles the problem of
-         predicting future motion patterns, not necessarily arrival
-         time so performance metrics does not exactly translate
-         (although arrival time could be derived from their approach)
-
-**** Topic Models
-      - cite:Zou2016Apr
-	Read this! It's on an adapted LDA model for modeling motion patterns
-
-      - cite:Wang2011
-	Chapter from a book, seems like it gives a bird eye view. Uses topic modeling on surveillance video to find action sequences
-
-      - Zou2014Aug
-	Read this! It's something called (Belief Based) Correlated Topic Models
-
-**** Suggested solutions
-***** Spectral Clustering
-      Can be used with DTW/LCSS as descibed in
-      cite:Zhang2006Aug. Realistically, the evaluation would be done by hand
-      picking trajectories and manually asserting correct behaviour.
-
-      DTW does not guarantee that the triangle inequality holds. [[tiger-question-3][question]]
-
-***** Inverse GP Likelihood approach
-      The approach used in cite:Kim2011Nov and in the the project
-      from this autumn. Based on having a probabilistic model for
-      each motion pattern and classifying using maximum likelihood
-***** Learn numbers of clusters then the GP "overlapping mixtures of GPs"?
-***** Warped GMM from the doctor thesis?
-***** Only temporal aspect is important
-      Cluster based only on temporal data, which is given once every
-      second and could possibly be assumed to be synchronised. Then
-      assign new trajectories based on this. (Very domain specific though)
-
-
-*** TODO Classifying clusters
-**** Papers to read
-     One of the ones Tiger sent. Go fetch
-
-**** Suggested solutions
-     - MAP with uniform cluster prior. Requires a probabilistic
-       model. Assign to cluster \(k\) such that \[
-     \argmax_{GP_{k]}\frac{1}{n}\sum_{i=i}^{n} P(GP_{k}(x_i, y_i) | GP_{k})P_{k}
-     \] 
-
-*** TODO Extending to multiple stops
-**** Papers to read
-     Theory behind simple additive model using Laplace approximation cite:Bishop2006Aug
-      
-**** Suggested solutions
-***** An additive model using Laplace approximation in posterior
-      mode. Everything would be normally distributed and computable in
-      closed form. The posterior arrival time of segment \(k+1\) would
-      be \(AT_{k}\) + \(AT_{k+1}\) where \(AT_{k}\) and \(AT_{k+1}\)
-      are the Laplace approximations in the mode of the posteriors 
-      for the corresponding model \(\mathcal{M}\). For \(\mathcal{M}_{k}\) the posterior is
-      computed for the current state, and for \(\mathcal{M}_{k+1}\) it
-      is computed either for the first data point in the frame (if
-      frames are implemented) or for the mean value for the first data
-      point in the \(k+1\) segment. This would require a model for
-      \(P(\(\mathcal{M}_{k+1}\) | \(\mathcal{M}_{k}\)), which could be
-      as simple as \(\mathcal{M}_{k+1} \sim
-      Dir(\alpha_{\mathcal{M}_{k}})\), where
-      \(\alpha_{\mathcal{M}_{k}}\) is acquired by counting and
-      normalising model transitions. This would be meaningless without
-      proper clustering, unfortunately.
-
-*** TODO Extracting events from motions patterns
-**** Papers to read
-     - cite:duvenaud2013structure
-       The idea of searching over kernels to detect structure in data.
-
-**** Suggested solutions
-     Convolution/correlation from hand-crafted event-kernels cite:smith1997scientist
-     Automated statistician style cite:duvenaud2013structure
-
-*** TODO Model evaluation
-**** Arrival time prediction
-     - Against vector field model cite:Tran2014Jun
-     - Against TDDE19 implementation of cite:Pang2018Oct
-     - Use metrics MAE/MAPE
-****** State of the art
-       - cite:Sinn2012Sep
-       - cite:Pang2018Oct
-       - cite:Gurmu2014
-
-**** Motion Pattern Clustering
-     - If pattern extraction works, check if they contain same patterns?
-     - ?
-
-*** TODO Outlier detection
-     
-** DONE Write thesis plan
-   CLOSED: [2019-01-17 tor 11:44] DEADLINE: <2019-01-18 fre>
-
-   Think in terms of a divide-and-conquer approach. What problems
-   exist and in what order do they need to be solved?
-
-   - [X] Introduction
-     For final thesis: Also note down novelty of the thesis project.
-
-   - [X] Related work
-   - [X] Time plan
+*** TODO Fix feedback from Tiger on thesis plan
+    - Reverse the inverse. The synchronisation is not the primary entity
+    - Synchronisation function does not need to depend on entire state space
+    - Split trajectory representation, synchronisation and motion pattern modeling
+    - lower case (observed) x, y -> tau is fine
+    - u, v stochastic (should be capital letters for convention)
+    - härled hela modelen
+    - "The work of M. Tiger and F. Heintz" cite properly
+    - background chapter should contain all prerequisites to
+      understand the thesis project
+*** TODO Precisely formulate the problem and sub-problems
+**** System that makes arrival time predictions
+     Evaluation: MAPE/MAE, posterior confidence variance (can be based on
+     number of data points collected)
 
 
 * Questions
@@ -381,11 +430,26 @@
      and predictions can be used. He also said to write more than reasonable 
      think on applications of the models.
 
-
 *** What distances are available for trajectories?
     <<tiger-question-3>>
     Spectral clustering can be done with similarity measures that are
     not proper distances.
+
+*** How to quantify clustering performance?
+    Clustered trajectories should have similar arrival time (travel
+    time). Do they implicitly by having similar trajectories?
+    
+*** How to quantify event detection?
+    Manually annotate I guess. Unclear. Proof of concept backed by
+    domain knowledge might suffice.
+
+*** Can we talk about notation?
+
+*** Why do we map tau -> time?
+    Tau represents generalisation to arrival
+    
+*** How do Kalman smoother work?
+    Tiger will email matlab-code for this.  I've borrowed a book on statistical sensor fusion which covers this theory.
 
 ** For Heintz
    This section contain questions for Fredrik Heintz, examiner of
@@ -397,3 +461,9 @@
 * Time plan
   It would be really neat to get this to work with
   org-mode-export-taskjuggler
+
+
+Givet trajectoria vill vill kunna jämföra den. Vi vill prata om
+närmast euklidisk projektion. 
+Första problemet är "vad har en punkt i rummet för projektion på tajektrian?"
+tau represents the generalisation and predictions are based on that
