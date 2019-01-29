@@ -126,9 +126,13 @@ trajectory to be orthogonal. To enforce this property, data augmentation is used
 
 When training GPs using a stationary kernel function, it is assumed
 that the data is uniformly distributed, which is not the case for the
-data set used. In particular, during stand-stills, many
-observations are generated in close proximity, which skews the
+data set used. Recall the function $\synchf_{k} : \posspace \mapsto
+\synchspace$. In this case, the data is assumed to be uniformly
+distributed in $\posspace$, but as described in Chapter~\ref{ch:data},
+all data is collected approximately uniform in \textit{time}. This causes many
+observations to be generated in close proximity during stand-stills, which skews the
 learning of the kernel lengthscale parameters to small values. To
+make data approximately uniformly distributed spatially instead and 
 avoid this problem, a technique called \textit{stop compression} is used.
 
 \subsubsection{Data Augmentation}
@@ -168,14 +172,14 @@ Figure~\ref{fig:stop-compression-before} and Figure~\ref{fig:stop-compression-af
     \includegraphics[scale=0.48,width=\textwidth]{stop-compression-before}
     \caption{Trajectory before stop compression. Several observations
       are very close spatially, but the data is
-      approximately uniform in time. }\label{fig:stop-compression-before}
+      approximately uniformly distributed temporally. }\label{fig:stop-compression-before}
   \end{minipage}
   \hspace{5pt}
   \begin{minipage}{.46\textwidth}
     \includegraphics[scale=0.5,width=\textwidth]{stop-compression-after}
     \caption{Spatial progression of a trajectory
       after stop compression. The data is
-      approximately uniform in distance.}\label{fig:stop-compression-after}
+      approximately uniformly distributed spatially.}\label{fig:stop-compression-after}
   \end{minipage}
 \end{figure}
 
