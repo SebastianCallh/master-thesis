@@ -1,35 +1,3 @@
-%%% lorem.tex --- 
-%% 
-%% Filename: lorem.tex
-%% Description: 
-%% Author: Ola Leifler
-%% Maintainer: 
-%% Created: Wed Nov 10 09:59:23 2010 (CET)
-%% Version: $Id$
-%% Version: 
-%% Last-Updated: Wed Nov 10 09:59:47 2010 (CET)
-%%           By: Ola Leifler
-%%     Update #: 2
-%% URL: 
-%% Keywords: 
-%% Compatibility: 
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%%% Commentary: 
-%% 
-%% 
-%% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%%% Change log:
-%% 
-%% 
-%% RCS $Log$
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 
-%%% Code:
-
 \chapter{Method}
 \label{cha:method}
 This chapter describes the proposed system for arrival time prediction
@@ -40,14 +8,22 @@ This section formally describes the system piece-wise. On a conceptual
 level, the system assumes that similar trajectories, with respect to their motion patterns, should arrive at
 approximately the same time. When presented with a new trajectory, the system
 finds previously observed trajectories with similar motion patterns,
-and predict arrival times based on the most similar ones.
+and predict arrival times based on the most similar one. 
 
-\section{Trajectory Comparison}
-The first step is establishing a similarity metric for
-trajectories which have different temporal lengths, and unevenly
-distributed observations. Consider the local distance
-from an observation on $\traj_2$ to $\traj_1$ as the orthogonal
-projection onto $\traj_2$, as illustrated in Figure~\ref{fig:trajectory-projection}.
+The current system description assume that each trajectory represents
+a motion pattern (motion pattern clusters has a single trajectory).
+
+\section{Trajectory Model}
+To find similar trajectories, a trajectory similarity metric 
+is needed. The similarity metric need to be well defined for
+trajectories of different temporal lengths, and unevenly
+distributed observations.
+
+\subsection{Synchronisation Model}
+One notion of similarity between trajectories is some aggregation of
+local similarities. Consider the local distance from an observation on trajectory
+$\traj_2$ to trajectory $\traj_1$ as the distance of the orthogonal
+projection onto $\traj_1$, as illustrated in Figure~\ref{fig:trajectory-projection}.
 \begin{figure}
   \centering
   \includegraphics[scale=2.5]{trajectory-projection}
@@ -55,171 +31,201 @@ projection onto $\traj_2$, as illustrated in Figure~\ref{fig:trajectory-projecti
   $\traj_1$ as point-wise orthogonal projections.}\label{fig:trajectory-projection}
 \end{figure}
 This approach would eliminate the need to align observations before
-comparing, however, it requires a continuous trajectory representation $h_{i}(t)$,
-while observed trajectories are discrete samples. Assuming the samples
-are jointly Normally distributed, and
-come from a smoothly-varying function, a GP can be fit to the
-observations to approximate $\obs_{i}^{(n)} = h_{i}(t)$. This GP will
-model observations based on points in time, but the
-\textit{exact points in time} are not relevant, since trajectories
-for a single segment are generated at many different
-occasions. Instead, consider modeling trajectory observations 
-as $\obs_{i}^{n} = \modelf_{i}(\synchspace)$, where
-$\synchspace = [0, 1]$ is the \textit{progress} from
+comparison. However, it requires a continuous trajectory
+representation, while trajectories are observed as discrete samples.
+A step toward this is seeing observations as samples from a continuous function
+$\traj_{k} = \tilde{f}_{k}(t)$, which describes the trajectory as a function of
+time. While continuous, this description is based on specific time
+points, but the \textit{exact points in time} of observations are not
+relevant, since trajectories for a single segment are generated at many different
+occasions. Instead, consider observations as samples from the function
+as $\traj_{k} = \modelf_{k}(\synchspace)$, where $\synchspace = [0, 1]$ is the \textit{progress} from
 start ($\synchspace = 0.0$) to finish ($\synchspace = 1.0$) of
-a trajectory. This GP models observations based on
-progression for any trajectory on a segment in a unified way. 
-Finding a projection for point $\obs$ onto trajectory
-$\traj_{i}$ can now be seen as finding how far along the trajectory $\obs$
-would have traveled. More precisely, finding the $\tau$ that $\obs$
-corresponds to. This can be done by fitting another GP to
-$\tau = \synchf_{i}(\obs)$, which maps an observation onto the
-progress relative to $\traj_{i}$. The projection onto $\traj_{i}$ is
-then given by the composition $\synchedobs = (\modelf \cdot \synchf)(\obs)$.
+a trajectory. This function makes it possible to talk about observations based on
+progression for any trajectory, regardless of the exact observation time points. 
 
-
-as discrete samples. The samples can be seen as samples from a
-smoothly-varying function of time $\obs_{i}^{(n)} = h_{i}(t)$, which
-is naturally modeled by a GP.
-
-$\traj_{i} = (\obs_{i}^{(1)},
-\obs_{i}^{(2)}, \ldots, \obs_{i}^{(N)})$. 
-Let $\traj_{i} = (\obs_{i}^{(1)}, \obs_{i}^{(2)}, \ldots, \obs_{i}^{(N)})$ denote trajectory
-$i$ of length $N$, where each observation $\obs_{i}^{(n)} = (p_x, p_y,
-v_x, v_y)$ contains position and velocity, and live in state space $\statespace$. 
-A trajectory can be seen as a sequence of
-samples from a time dependent, smoothly-varying function, which is naturally
-modeled by a GP. In light of that observation, it is -reasonable to represent every observed trajectory as
-a GP, and use the GP log likelihood to represent similarity. However
-trajectories typically have different temporal lengths, which is
-referred to as being \textit{unsynchronised}. To make comparisons in a
-meaningful way, they need to have the \textit{same} temporal length,
-that is, they need to be \textit{synchronised}. 
-Figure~\ref{fig:unsynchronised-trajectories-fnames}, and
-Figure~\ref{fig:synchronised-trajectories-fnames} illustrate the
-concept of synchronised trajectories.
+Assuming the samples are jointly Normally distributed, and
+that $\modelf$ is smooth, a GP can be fit to the
+observations to approximate $\traj_{k} = \modelf_{k}(\synchspace)$, with
+independent outputs. Finding a projection for an observation $\newobs$ onto trajectory
+$\traj_{k}$ can now be seen as finding how far along the trajectory $\newobs$
+would have traveled. More precisely, finding the $\tau$ that $\newobs$
+corresponds to. Under the assumption that $\synchspace \sim
+\mathcal{N}(\mu_{\synchspace}, \Sigma_{\synchspace})$, a multivariate
+GP is used to model $\synchspace = \synchf_{k}(\obs)$, which maps $\newobs$ onto the
+progress relative to $\traj_{k}$. When considering progress along a
+segment, the current velocity does not matter. Hence, the domain of
+$\synchf_{k}$ is the subspace $S' = (p_x, p_y)$ of $S$, and
+consequently $S$ is collapsed into $S'$ before mapping onto $\synchspace$. The projection onto $\traj_{k}$ is
+finally given by the composition $\synchedobs = (\modelf \circ
+\synchf)(\obs)$, illustrated in Figure~\ref{fig:synch-model}.
 \begin{figure}
-\begin{minipage}{.5\textwidth}
-    \includegraphics[scale=0.48,width=\textwidth]{unsynchronised-trajectories}
-    \caption{Remaining distance for some route as a function of time for 
-      unsynchronised trajectories. The functions cannot be
-      fully compared, since the they have different support $[0, a]$,
-      $[0, b]$, $[0, c]$.}\label{fig:unsynchronised-trajectories-fnames}
-\end{minipage}
-\hspace{5pt}
-\begin{minipage}{.48\textwidth}
-\includegraphics[scale=0.5,width=\textwidth]{synchronised-trajectories}
-    \caption{Remaining distance for some route as a function of time for 
-      synchronised trajectories. The motion patterns are comparable from
-      start to end, since they all have support $[0, 1]$.}\label{fig:synchronised-trajectories-fnames}
-\end{minipage}
+  \centering
+  \includegraphics[scale=1.5]{synch-model}
+  \caption{An illustration of the mappings involved when synchronising
+    trajectories. Observations are first projected by $p$ from $S$ onto the
+    subspace $S'$, spanning only the dimensions $p_x, p_y$. Then onto
+    $\synchspace$ by $\synchf_{k}$, and finally back onto $S$ by
+    $\modelf_{k}$.}\label{fig:synch-model}
 \end{figure}
-
-\subsection{Synchronisation Model}
-Consider modeling observations from a trajectory as $\obs_{i}^{n} = \modelf_{i}(\synchspace)$ with an independent
-multi-output GP for each dimension of $S$, where
-$\synchspace = [0, 1]$ is the progress from
-start ($\synchspace = 0.0$) to finish ($\synchspace = 1.0$) of
-a trajectory. This model gives a way of to compare the
-progression of $\traj_{i}$ with any other trajectory via the models likelihood, which for
-a new observation $\newobs$ is
+In light of the these results, let $\model_{synch}^{(k)} = (\modelf_{k},
+\synchf_{k})$ be the \textit{synchronisation model} of $\traj_{k}$.
+The final step is to formulate a local similarity metric from the
+projections and aggregate this into a global one.
+While it is intuitive to define the local similarity as the absolute difference $|E[\synchedobs]
+- \newobs$|, this approach does not consider the  uncertainty in $\synchedobs$. 
+Consider instead the data log likelihood
 \begin{equation}
   \label{eq:model-log-likelihood}
   \begin{split}
-    \log P(\synchspace|\newobs, {\modelf_{i}}) & = -\frac{1}{2}(\synchspace - \mu(\newobs)){[\Sigma]}^{-1}(\newobs - \mu(\synchspace)) \\
-    & = -\frac{1}{2}\log{|\Sigma|}+C,
+    \log P(\synchspace|\newobs, \model_{synch}^{(k)})
+    & = -\frac{1}{2}(\synchspace - \mu(\newobs)){[\Sigma(\newobs)]}^{-1}(\synchspace - \mu(\newobs)) \\
+    & = -\frac{1}{2}\log{|\Sigma(\newobs)|}+C,
   \end{split}
 \end{equation}
 where $\mu(\newobs)$ and $\Sigma(\newobs)$ are given by
 equations~\ref{eq:gp-mean-function},
-and~\ref{eq:gp-covariance-function} for some $f_{i}$.
-However, a way to compute $\synchspace$ for $\newobs$ is needed. This
-is solved by using another GP to learn the inverse model $\synchf_{i} :
-p\statespace \mapsto \synchspace$ for each trajectory $\traj_{i}$.
-Any observation $\newobs$ can consequently be given a similarity metric
-relative to $\traj_{i}$ by $\log P(\synchspace|\synchedobs,
-{\modelf_{i}})$, where $\synchspace = \synchf(\newobs)$, and
-$\synchedobs = (\modelf \circ \synchf)(\newobs)$.
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.5]{synch-model}
-  \caption{An illustration of the synchronisation model $\model_{synch}^{(i)}$, shown as 
-    the mappings of $\modelf_i$ and $\synchf_i$. When synchronising a trajectory,
-    it is mapped by $\modelf_i \circ \synchf_i$.}\label{fig:synch-model}
-\end{figure}
-Together, $\modelf_{i}$ and $\synchf_{i}$ make up the \textit{synchronisation
-  model} $\model_{synch}^{(i)} = (\modelf_{i},  \synchf_{i})$ of $\traj_{i}$,
-which is illustrated in Figure~\ref{fig:synch-model}.
+and~\ref{eq:gp-covariance-function} for a GP modeling $f_{k}$. The
+likelihood measures how well $\model_{synch}^{(k)}$ explains observation
+$\newobs$, and is a measure of similarity. Assuming that all models
+are equally probable a priory, Bayes theorem gives
+\begin{equation}
+  \label{eq:model-posterior}
+  \begin{split}
+    \log P(\model_{synch}^{(k)} | \newobs, \synchspace)
+    & \propto \log P(\synchspace|\newobs, \model_{synch}^{(k)}) + \log
+    P(\model_{synch}^{(k)}) \\
+    & \propto \log P(\synchspace|\newobs, \model_{synch}^{(k)})
+  \end{split}
+\end{equation}
+and the most similar model can consequently be chosen by $M_{c} = \underset{k}{\mathrm{argmax}} \log
+P(\model_{synch}^{(k)} | \newobs, \synchspace)$. Having a distribution
+over models will also prove useful when making arrival time
+predictions. This local similarity measure generalises to a global one
+for an entire trajectory by letting $\newobs$ be
+\[\newobs =
+  \begin{pmatrix}
+    p_{x}^{1} & p_{y}^{1} & v_{x}^{1} & v_{y}^{1} \\
+    p_{x}^{2} & p_{y}^{2} & v_{x}^{2} & v_{y}^{2} \\
+    \vdots  & \vdots  & \vdots & \vdots  \\
+    p_{x}^{m} & p_{y}^{m} & v_{x}^{m} & v_{y}^{m} \\
+  \end{pmatrix}.
+\]
 
 \subsection{Learning the Synchronisation Model}
-Learning a synchronisation model $\model_{synch}^{(i)}$ means learning
-$\modelf_{i}$ and $\synchf_{i}$ by MAP estimation. However, there are
+Learning a synchronisation model $\model_{synch}^{(k)}$ means learning
+$\modelf_{k}$ and $\synchf_{k}$ by MAP estimation. However, there are
 more constraints on the functions than can be formulated in
-priors. In particular, a critical property of $\synchf_{i}$ 
+priors. In particular, a critical property of $\synchf_{k}$
 is that it should be monotonically increasing in the direction of progression,
-and stationary orthogonal to it. This is explained by the fact that a
+and stationary orthogonal to it. This is intuitively explained by the fact that a
 vehicle is no closer to its destination should it drive more to the
-left or right on a road; only the progression \textit{along} the road matters.
-To enforce this property, data augmentation is used. 
+left or right on a road; only the progression \textit{along} the road
+matters. Formally, this is required for the projection onto a
+trajectory to be orthogonal. To enforce this property, data augmentation is used.
 
 When training GPs using a stationary kernel function, it is assumed
 that the data is uniformly distributed, which is not the case for the
-data available data set. In particular, during stand-stills, many
+data set used. In particular, during stand-stills, many
 observations are generated in close proximity, which skews the
 learning of the kernel lengthscale parameters to small values. To
-avoid this problem, a technique called stop-compression is used.
+avoid this problem, a technique called \textit{stop compression} is used.
 
 \subsubsection{Data Augmentation}
 \label{sec:data-augmentation}
 For reasons previously described, $\synchf_{i}$ should be monotonically increasing in
-the direction of progression and stationary orthogonal to it. 
+the direction of progression and stationary orthogonal to it.
 To enforce learning such a function, each
-observation $\traj_{i}^{(i)}$ is duplicated by placing a normal distribution
-over it, orthogonal to the spatial progression vector ${(\traj^{(i+1)}_x -
-  \traj^{(i)}_x, \traj^{(i+1)}_y - \traj^{(i)}_y)}^T$, and drawing several samples
-with the same progression as $\traj^{(i)}$. This process is illustrated in
+observation $\obs_{i}^{(i)}$ for a trajectory $\traj_{i}$is duplicated by placing a normal distribution
+over it, orthogonal to the spatial progression vector ${(\obs^{(i+1)}_x -
+  \obs^{(i)}_x, \obs^{(i+1)}_y - \obs^{(i)}_y)}^T$, and drawing several samples
+with the same progression as $\obs^{(i)}$. This process is illustrated in
 Figure~\ref{fig:traj-without-support-data} and
-Figure~\ref{fig:traj-with-support-data}. 
+Figure~\ref{fig:traj-with-support-data}.
 \begin{figure}
   \begin{minipage}{.46\textwidth}
     \includegraphics[scale=0.48,width=\textwidth]{traj-without-support-data2}
-    \caption{Spatial progression of a trajectory 
+    \caption{Spatial progression of a trajectory
       before data augmentation.}\label{fig:traj-without-support-data}
   \end{minipage}
   \hspace{5pt}
   \begin{minipage}{.46\textwidth}
     \includegraphics[scale=0.5,width=\textwidth]{traj-with-support-data2}
-    \caption{Spatial progression of a trajectory 
-      after data augmentation.}\label{fig:traj-with-support-data}
+    \caption{Spatial progression of a trajectory
+      after data augmentation. }\label{fig:traj-with-support-data}
   \end{minipage}
 \end{figure}
 
 \subsubsection{Stop Compression}
 \label{sec:stop-compression}
 Stop compression aggregates observations in close proximity into a
-single observation through averaging. Finding observations that should
-be aggregated is done using... Kalman smoother talk to Tiger
+single observation through averaging. Observations within a radius of
+$4$m are clustered into a single observation with the mean value of
+the clustered observations. An example of this is seen
+Figure~\ref{fig:stop-compression-before} and Figure~\ref{fig:stop-compression-after}.
+\begin{figure}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.48,width=\textwidth]{stop-compression-before}
+    \caption{Trajectory before stop compression. Several observations
+      are very close spatially, but the data is
+      approximately uniform in time. }\label{fig:stop-compression-before}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.5,width=\textwidth]{stop-compression-after}
+    \caption{Spatial progression of a trajectory
+      after stop compression. The data is
+      approximately uniform in distance.}\label{fig:stop-compression-after}
+  \end{minipage}
+\end{figure}
 
-
-\subsubsection{Similarity Metric}
-A similarity metric can be defined by
-\begin{equation}
-  sim(\traj_{i}, \traj_{j}) = \frac{1}{M}\sum_{i=m}^{M}P(\traj_{i}^{m} | \traj_{i}),
-\end{equation}
-where trajectory $\traj_{j}$ has length $M$. The likelihood is
-computed by synchronising $\traj_{j}$ using $\model_{synch}^{(i)}$. Observe that this metric is
-not symmetric, nor does it satisfy the triangle inequality.
-Consequently it is not a proper distance.
-
-\subsection{Trajectory Clustering}
-Clusters of one trajectory are currently considered.
-
-\subsection{Arrival Time Prediction}
-Why is this done from tau and not state?
+\subsection{Prediction Model}
+Predicting arrival times can be seen as learning the remaining time of
+a segment given a certain position. However, modeling it as $\arrtime
+= \tilde{\predf_{k}}(p_x, p_y)$ would assume that every trajectory passes the
+exact same positions. A better model is $\arrtime
+= \predf_{k}(\synchspace)$, which instead depends on progression. Since the
+progression represents similar trajectories and not a single one, this
+model generalises much better. Assuming that $\arrtime \sim
+\mathcal{N}(\mu_{\arrtime}, \Sigma_{\arrtime})$, a GP can model $\predf_{k}$, 
+extending the synchronisation model to the \textit{trajectory model}
+$\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
 \begin{figure}
   \centering
-  \includegraphics[scale=1.5]{prediction-model}
-  \caption{An illustration of the prediction model. When predicting
-    the arrival time for a trajectory, 
-    it is mapped by $\predf_i \circ \synchf_i$.}\label{fig:synch-model}
+  \includegraphics[scale=1.5]{trajectory-model}
+  \caption{An illustration of the trajectory model, which models
+    current state $S$ and time left $\arrtime$ as functions of
+    progress $\synchspace$. $P$ denotes orthogonal projection.}\label{fig:trajectory-model}
 \end{figure}
+
+\section{Arrival Time Predictions}
+The arrival time predictions are modeled as a Mixture of Gaussian
+Processes (MoGP), where each motion pattern model $\model_{k}$ induce a component. The
+model predicts remaining time until arrival, and the probability of
+the time remaining being $t$ for an observation $\obs$ is given by
+the mixture
+\begin{equation}
+  P(\arrtime | \obs) = \sum_{k}P(\arrtime | \obs, \model_{k}) P(\model_{k}),
+\end{equation}
+where the component weights $P(\model_{k})$ are given by
+equation~\ref{eq:model-posterior}. Since all components are Gaussian, 
+$P(\arrtime | \obs)$ will have one mode for each component. The
+point-estimate prediction of the model is taken to be the largest
+mode, corresponding to the mean prediction of the most probable model.
+
+% \begin{figure}[H]
+%   \begin{minipage}{.46\textwidth}
+%     \includegraphics[width=\textwidth]{figures/mixture-start-of-traj.png}
+%     \caption{Density of arrival time predictions at 
+%       the start of a segment.}\label{fig:mixture-start-of-traj}
+%   \end{minipage}
+%   \hspace{5pt}
+%   \begin{minipage}{.46\textwidth}
+%     \includegraphics[width=\textwidth]{figures/mixture-end-of-traj.png}
+%     \caption{Density of arrival time predictions at 
+%       the end of a segment.}\label{fig:mixture-end-of-traj}
+%   \end{minipage}
+% \end{figure}
+
+\subsection{Event Detection}
+The problem of detecting events have not yet been investigated.

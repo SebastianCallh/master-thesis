@@ -1,94 +1,154 @@
-* Log
-  This document is for logging the day-by-day progress of my master's thesis.
+This document is for logging the day-by-day progress of my master's thesis.
 
-** Week 2
-*** <2019-01-07 mon>
-    The first day. Had [[file:./msc.org::*Startup meeting with Heintz][a startup meeting.]]
+* Week 2
+** <2019-01-07 mon>
+   The first day. Had [[file:./msc.org::*Startup meeting with Heintz][a startup meeting.]]
 
-*** <2019-01-08 tis>
-    Met with Tiger, asked him [[file:./msc.org::tiger-question-1][about the structure of the thesis plan]]. 
-    Wrote a draft introduction and aim chapter.
-*** <2019-01-09 ons>
-    Spent most of the time reading on clustering and identifying
-    motion patterns. Some stuff from the
-    computer vision field: cite:Zhang2006Aug, cite:Tran2014Jun, and
-    some stuff I got from Tiger:
-    [[file:../../shared/fusion2015-tiger.pdf]],
-    [[file:../../shared/overlapping-mixtures-of-gps.pdf]].
-*** <2019-01-10 tor>
-    Got access to the "office"! One week until TP should be done so I
-    started writing on related work.
+** <2019-01-08 tis>
+   Met with Tiger, asked him [[file:./msc.org::tiger-question-1][about the structure of the thesis plan]]. 
+   Wrote a draft introduction and aim chapter.
+** <2019-01-09 ons>
+   Spent most of the time reading on clustering and identifying
+   motion patterns. Some stuff from the
+   computer vision field: cite:Zhang2006Aug, cite:Tran2014Jun, and
+   some stuff I got from Tiger:
+   [[file:../../shared/fusion2015-tiger.pdf]],
+   [[file:../../shared/overlapping-mixtures-of-gps.pdf]].
+** <2019-01-10 tor>
+   Got access to the "office"! One week until TP should be done so I
+   started writing on related work.
 
-*** <2019-01-11 fre>
-    Wrote related work on arrival time prediction (a couple of LSTMs). Continued writing
-    related work for trajectory learning using GPs. There are issues with
-    understanding [[file:../../shared/modeling-motion-patterns/energy-consumption-profile-using-gps.pdf][this paper]]
+** <2019-01-11 fre>
+   Wrote related work on arrival time prediction (a couple of LSTMs). Continued writing
+   related work for trajectory learning using GPs. There are issues with
+   understanding [[file:../../shared/modeling-motion-patterns/energy-consumption-profile-using-gps.pdf][this paper]]
 
-*** <2019-01-12 lör>
-    Wrote about the inverse Gaussian process in related work.
+** <2019-01-12 lör>
+   Wrote about the inverse Gaussian process in related work.
 
-** Week 3
-*** <2019-01-14 mån>
-     Tomorrow is hand in to Tiger for feedback on TP. I've been reading
-     and writing a lot on the topic modeling approach to clustering
-     trajectories. HDP, LDA seem central and different improvements
-     have been made on them, like Dual-HDP, DDual-HDP, LC-LDA.
+* Week 3
+** <2019-01-14 mån>
+    Tomorrow is hand in to Tiger for feedback on TP. I've been reading
+    and writing a lot on the topic modeling approach to clustering
+    trajectories. HDP, LDA seem central and different improvements
+    have been made on them, like Dual-HDP, DDual-HDP, LC-LDA.
 
-*** <2019-01-15 tis>
-    Had a feedback meeting with Tiger. Got a lot of good feedback. He
-    also told me to write a pitch of the applications use, and to
-    clearly address all sub-problems of the
-    implementation. Additionally I should make a time plan for the
-    projects milestones, but can wait with the exact week-to-week
-    details until after the meeting with Heintz on Friday.
+** <2019-01-15 tis>
+   Had a feedback meeting with Tiger. Got a lot of good feedback. He
+   also told me to write a pitch of the applications use, and to
+   clearly address all sub-problems of the
+   implementation. Additionally I should make a time plan for the
+   projects milestones, but can wait with the exact week-to-week
+   details until after the meeting with Heintz on Friday.
 
-*** <2019-01-16 ons>
-    Finished a draft on the model pitch and addressing the
-    sub-problems of the application. Also wrote the related work
-    section on event detection based on automatic kernel structure discovery.
-    Tomorrow I will proof read and write down a rough time plan for
-    the project. 
+** <2019-01-16 ons>
+   Finished a draft on the model pitch and addressing the
+   sub-problems of the application. Also wrote the related work
+   section on event detection based on automatic kernel structure discovery.
+   Tomorrow I will proof read and write down a rough time plan for
+   the project. 
 
-*** <2019-01-17 tor>
-    Meeting with Heintz tomorrow. Proof read the entire thing and fixed
-    grammatical mistakes. Also made a document for the time plan with
-    the final deadlines in. The rest of the plan will be completed
-    after the meeting with Heintz.
+** <2019-01-17 tor>
+   Meeting with Heintz tomorrow. Proof read the entire thing and fixed
+   grammatical mistakes. Also made a document for the time plan with
+   the final deadlines in. The rest of the plan will be completed
+   after the meeting with Heintz.
 
-*** <2019-01-18 fri>
-    Had the with Heintz. He thought the plan was excellent and well
-    written! The plan is to implement the proposed system and then
-    evaluate improvements. To do this the evaluation and problem formulation
-    need to be precisely formulated.
-    After thinking about this for a while, it is really hard to
-    measure quality of clustering.
-*** <2019-01-19 lör>
-    Put down some theory on GPs from the TDDE19 project and changed
-    some notation on the inverse GP synchronisation based on suggestions
-    from Tiger.
+** <2019-01-18 fri>
+   Had the with Heintz. He thought the plan was excellent and well
+   written! The plan is to implement the proposed system and then
+   evaluate improvements. To do this the evaluation and problem formulation
+   need to be precisely formulated.
+   After thinking about this for a while, it is really hard to
+   measure quality of clustering.
+** <2019-01-19 lör>
+   Put down some theory on GPs from the TDDE19 project and changed
+   some notation on the inverse GP synchronisation based on suggestions
+   from Tiger.
 
+* Week 4
+** <2019-01-21 mån>
+   I should make a time plan today. The first thing to put in in till
+   be what to do this week, where there are mainly two options. I
+   could either write the background chapter, or I could start with
+   deriving the model. Deriving the model is harder, and more critical
+   to the project so I think it will have to be that. This means that
+   I have to settle on a specific model.
 
-** Week 4
-*** <2019-01-21 mån>
-    I should make a time plan today. The first thing to put in in till
-    be what to do this week, where there are mainly two options. I
-    could either write the background chapter, or I could start with
-    deriving the model. Deriving the model is harder, and more critical
-    to the project so I think it will have to be that. This means that
-    I have to settle on a specific model.
-
-    After thinking a lot and talking to Tiger, the model I will go for
-    is one where every trajectory \(T_{i}\) is modeled as \(f_{i} : \tau_{i} \mapsto s\)
-    accompanied with \(g_{i} : \s \mapsto \tau_{i}\) and \(h_{i} :
-    \tau_{i} \mapsto t\). That is, every trajectory gets a
-    synchronisation GP that maps to a space where they can be compared
-    with every other GP.
+   After thinking a lot and talking to Tiger, the model I will go for
+   is one where every trajectory \(T_{i}\) is modeled as \(f_{i} : \tau_{i} \mapsto s\)
+   accompanied with \(g_{i} : \s \mapsto \tau_{i}\) and \(h_{i} :
+   \tau_{i} \mapsto t\). That is, every trajectory gets a
+   synchronisation GP that maps to a space where they can be compared
+   with every other GP.
   
-*** <2019-01-22 tis>
-    I keep wrestling with notation. There is quite a lot of it
-    floating around, and denoting a specific trajectory, and new
-    observations in particular is difficult.
+** <2019-01-22 tis>
+   I keep wrestling with notation. There is quite a lot of it
+   floating around, and denoting a specific trajectory, and new
+   observations in particular is difficult.
 
-    After finishing a draft describing the synchronisation model I can
-    at least start addressing the problems with learning it. In
-    particular, the data augmentation will be described.
+   After finishing a draft describing the synchronisation model I can
+   at least start addressing the problems with learning it. In
+   particular, the data augmentation will be described.
+
+   I have to redo my derivation of the model. I talked to Tiger about
+   how to derive the model from the problem of
+   comparing two trajectories. I think the line of thought is roughly:
+   We want to measure distance as the orthogonal projection onto trajectories.
+   This can be done by mapping X = (state . tau . state)(x) and taking the
+   E[X]. So I guess we then could compute the distance as E[X]-x, but
+   this is not what we do (why?). Instead we compute the likelihood
+   P(E[X] | tau, Model).
+
+** <2019-01-23 ons>
+   The goal for today is to finish up the new model
+   description. Tomorrow I want to be done with both describing the
+   model, and explain the learning process, including data
+   augmentation and stop compression.
+
+   It has been hard. I have managed to explain the problem fairly well
+   up until assessing the probabilistic stuff.
+
+** <2019-01-24 tor>
+   Today I'll finish up the model description section. In addition,
+   I'll write about the issues of learning it.
+
+   I got access to What's App, allowing me to get in touch with Tiger
+   without walking all the way to his office.
+** <2019-01-25 fre>
+   I took the day off, since I had no feedback from Tiger.
+   
+* Week 5
+** <2019-01-28 mån>
+   Today I started implementing things. I wrote a module for learning
+   trajectory models composing of function models and a notebook using
+   said module. Unfortunately, there is an [[https://github.com/SheffieldML/GPy/issues/723][issue]] with
+   plotting. Calling it gives 
+   =ValueError: shape mismatch: value array of shape (200,1,1) could
+   not be broadcast to indexing result of shape (1,200)=.
+   
+   I talked to Tiger about feedback on my report progress, and he will
+   read it tomorrow. So I will talk to him about it the day after tomorrow.
+
+   Until then I guess I'll just write the data chapter in the
+   report. I'll start with that tomorrow, and if I get some response
+   on the plotting issue, I will see to that as well. 
+
+** <2019-01-29 tis>
+   I got a response on the issue from yesterday, so I could probably
+   continue the implementation. However, it would be nice to get the
+   boring stuff out of the way as soon as possible, so I'll write the
+   data chapter toady anyway. I've also got over six weeks until
+   half-time meeting.
+   
+* Week 11
+  Sometime this week the half-time meeting will take place.
+  This is probably a good time to find an opponent, since it will be
+  more obvious who will finish their work in time.
+
+* Week 19
+  This week the report should be done and send to the opponent.
+
+* Week 21
+  Sometime this week the final presentation will take place
+

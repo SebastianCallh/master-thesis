@@ -1,3 +1,31 @@
 \chapter{Data}
+% The data is provided by Östgötatrafiken and is collected from buses at
+% a constant rate of one observation per second. A single observation
+% comprises a timestamp, GPS position, velocity, direction, and a
+% specific event type. Additional fields are present depending on the
+% event type. 
+
+% JourneyAssignedEvent: contains bus line
+% JourneyCompletedEvent: 
+
+
+% An illustration of an observation can be seen in Figure~\ref{fig:example-observation}.
+% \begin{figure}
+%   \centering
+%   \includegraphics[scale=1.5]{example-observation}
+%   \caption{Example of an observation, excluding fields specific to
+%     certain event types.}\label{fig:example-observation}
+% \end{figure}
+
+% The provided data consists of one file per day, with a total of 92 days between February and April in 2018. Each file has an approximate size of 5 GB, with around 2.4 million observations per file. Within these files are logs over the \textit{events}, which each bus sends throughout the day. The events represent different states of the bus, and there are over 20 different event-types. For this project, only four event-types were needed to successfully extract complete journeys that could be used as input for our models. These four events and their usage are listed below:\\
+% \begin{description}
+% \item[ObservedPositionEvent:] Is sent by buses with a frequency of 1Hz. This event contains the GPS data, speed, and direction (angle) of a given bus.
+% \item[EnteredEvent:] Is triggered when the bus is within a certain distance to a bus station. This event is used to split a journey into segments.
+% \item[JourneyStartedEvent:] Is triggered when the bus is assigned a new journey. This event is used to determine which line a bus is currently serving.
+% \item[JourneyCompletedEvent:] Is triggered when the bus has completed a journey. This event is used as a flag to determine when a journey has ended.
+% \end{description}
+
+
+Explain data format
 Explain one observation per second
 Explain the clusters at stops

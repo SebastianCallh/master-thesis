@@ -448,16 +448,33 @@
 *** Why do we map tau -> time?
     Tau represents generalisation to arrival
     
-*** How do Kalman smoother work?
+*** Material for Kalman smoother?
     Tiger will email matlab-code for this.  I've borrowed a book on statistical sensor fusion which covers this theory.
+
+
+*** How do we compute the likelihood?
+    We consider S' -> tau as deterministic, so it has to be for tau -> S.
+    I assume it is for new observation x, and corresponding tau, but
+    for the trajectory model.
+
+*** Why similarity as likelihood and not sum of absolute distances?
+    From [[https://ieeexplore-ieee-org.e.bibl.liu.se/stamp/stamp.jsp?tp=&arnumber=8500676][the paper]], model is selected by maximum likelihood, and no
+    posterior is computed. Is this something we want for the
+    prediction model? It would motivate a probabilistic measurement
+
+    The probabilisitic model handles uncertainty of the trajectory
 
 ** For Heintz
    This section contain questions for Fredrik Heintz, examiner of
    this thesis project.
 
+
 * Computer SSH
   First ssh into remote-und.ida.liu.se with liu id, 
   and then into li23-[1|4]
+  thinlinc.edu.liu.se is the new thinlinc host. Wonder if there is
+  another new one for SSH?
+
 * Time plan
   It would be really neat to get this to work with
   org-mode-export-taskjuggler
