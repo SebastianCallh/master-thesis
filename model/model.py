@@ -144,7 +144,8 @@ def haversine(lon1, lat1, lon2, lat2):
  
 def stop_compress(data: DataFrame, delta: float) -> DataFrame:
     """ Downsamples the data such that each consecutive data point have a least
-    delta distance between each other. Loses station information.
+    delta distance between each other. Data that is very dense will skew the
+    result since the aggreageted mean will be strongly defined by tightly clustered data.
     """
 
     def mean_timestamp(timestamps):
@@ -157,7 +158,7 @@ def stop_compress(data: DataFrame, delta: float) -> DataFrame:
         data.speed = np.max(data.speed, 0) # data contains -1 sentinel values for missing speed
 
         def contains_entered_event(df):
-            return data.event.transform(lambda e: e == 'EnteredEvent').any()
+            return df.event.transform(lambda e: e == 'EnteredEvent').any()
         
         special_treatment_fields = ['timestamp', 'event', 'seg', 'station', 'line', 'traj']
         compressed_data = data.drop(special_treatment_fields, axis=1).apply(np.mean, axis=0)
