@@ -1,3 +1,4 @@
+
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
@@ -18,6 +19,7 @@ import pandas as pd
 from pandas import DataFrame, Series
 import GPy
 from GPy.models import GPRegression
+from GPy.kern.src.kern import Kern
 from sklearn.preprocessing import StandardScaler
 
 
@@ -25,6 +27,7 @@ from sklearn.preprocessing import StandardScaler
 DB_NAME = 'msc'
 DB_USER = 'gp_user'
 DB_PW = 'gp_pw'
+
 
 # TYPE ALIAS
 GP = GPRegression
@@ -58,6 +61,14 @@ def loglik(func: FunctionModel) -> float:
     return func.model.log_likelihood()
 
 
+def normalise(data: DataFrame) -> DataFrame:
+    mean = data.mean()
+    for c in data.columns:
+        data[c] = data[c] - mean[c]
+
+    return data
+
+
 def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
     x_scaled = func.x_scaler.transform(X)
     y_scaled, var = func.model.predict(x_scaled)
@@ -70,20 +81,24 @@ def plot_function(func: FunctionModel, ax=None) -> ():
     else:
         func.model.plot()
 
+
 def learn_function(
         data: DataFrame,
         domain: Domain,
         codomain: Codomain,
+        kernel: Kern,
         f_type: str,
         priors: FunctionModelPriors=None,
         fixed_likelihood: int=None,
         n_restarts=3,
-        messages=False) -> FunctionModel:
+        verbose=False) -> FunctionModel:
     """Fits a gp to a function from provided domain -> codomain.
     The data provided is assumed to have fields for both domain and codomain.
     """
+
     x = data[domain]
     y = data[codomain]
+
     x_scaler = StandardScaler()
     y_scaler = StandardScaler()
     x_scaler.fit(x)
@@ -92,8 +107,8 @@ def learn_function(
     model = GPRegression(
         x_scaler.transform(x),
         y_scaler.transform(y),
-        GPy.kern.RBF(input_dim=x.shape[1],
-                     ARD=False))
+        kernel)
+
 
     if priors.kern_lengthscale:
         model.kern.lengthscale.set_prior(priors.kern_lengthscale)
@@ -105,9 +120,10 @@ def learn_function(
         model.likelihood.variance = fixed_likelihood
         model.likelihood.variance.fix()
 
-    model.optimize_restarts(n_restarts, messages)
+    model.optimize_restarts(n_restarts, messages=verbose)
     return FunctionModel(
-        model, f_type, x_scaler, y_scaler)
+        f_type, model, x_scaler, y_scaler
+    )
 
 
 # TRAJECTORY MODEL
@@ -126,6 +142,7 @@ class TrajectoryModel(NamedTuple):
     g: FunctionModel
     h: FunctionModel
 
+
 def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points
@@ -133,7 +150,7 @@ def haversine(lon1, lat1, lon2, lat2):
     """
     # convert decimal degrees to radians
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
- 
+
     # haversine formula
     dlon = lon2 - lon1
     dlat = lat2 - lat1
@@ -141,7 +158,8 @@ def haversine(lon1, lat1, lon2, lat2):
     c = 2 * asin(sqrt(a))
     r = 6371 # Radius of earth in kilometers
     return c * r
- 
+
+
 def stop_compress(data: DataFrame, delta: float) -> DataFrame:
     """ Downsamples the data such that each consecutive data point have a least
     delta distance between each other. Data that is very dense will skew the
@@ -218,37 +236,57 @@ def move_to(data, vec):
     return data
 
 
-def create_support_data(data: DataFrame, n_samples: int, sigma: float) -> DataFrame:
-    """Iterates over provided data frame with lat/lon-data 
-    and places a Gaussian distribution with provided variance on each observation.
-    From this distribution n_samples samples are drawn, which are aggregated together into
-    the returned support_data DataFrame.
-    """
+def create_support_data(
+        data: DataFrame,
+        f: FunctionModel,
+        n_samples: int,
+        delta: float,
+        sigma: float) -> DataFrame:
 
-    def orth_comp(a):
-        return np.array([-a[1], a[0]])
+    def orth_comp(v):
+        return np.array([-v[1], v[0]])
 
+    tau_grid = np.linspace(
+        np.min(data.tau.min()),
+        np.min(data.tau.max()),
+        1/delta
+    )
+    
     acc = []
-    for n in range(data.shape[0]-1):
-        cur = data.iloc[n]
-        nxt = data.iloc[n+1]
-        orth_vec = orth_comp(delta_vector(cur, nxt))
-        cur_vec = obs_vector(cur)
+    for n in range(len(tau_grid)-1):
+        cur_tau = np.array(tau_grid[n]).reshape(1, 1)
+        nxt_tau = np.array(tau_grid[n+1]).reshape(1, 1)
+        cur, _ = predict(f, cur_tau)
+        nxt, _ = predict(f, nxt_tau)
+        orth = orth_comp(nxt[0]-cur[0])
+        orth = orth / np.linalg.norm(orth)
 
-        samples = np.random.normal(0, sigma, n_samples)
-        support_latlon = [cur_vec + orth_vec*x for x in samples]
-        acc.extend([move_to(cur.copy(), vec) 
-                     for vec in support_latlon])
-    
+        samples = [
+            cur + orth * x
+            for x in np.random.normal(0, sigma, n_samples)
+        ]
+
+        acc.extend([
+            {'lat': x[0][0],
+             'lon': x[0][1],
+             'tau': tau_grid[n]}
+            for x in samples
+        ])
+
     return pd.DataFrame(acc)
-    
+
+
+def compute_tau(data: DataFrame) -> [float]:
+    N = data.shape[0]
+    return [(x + 1) / N for x in range(N)]
+
 
 def learn_trajectory_model(
         data: DataFrame,
         route: int,
         trajectory: int,
-        codomain_f: Domain,
-        domain_h: Domain,
+        f_codomain: Domain,
+        g_domain: Domain,
         f_priors: FunctionModelPriors=None,
         g_priors: FunctionModelPriors=None,
         h_priors: FunctionModelPriors=None,
@@ -256,16 +294,16 @@ def learn_trajectory_model(
         n_restarts=3,
         stop_compress_delta=.0004,
         n_augment_samples=5,
-        augment_sigma=.8) -> TrajectoryModel:
+        augment_sigma=.8,
+        augment_delta=.1,
+        verbose=True) -> TrajectoryModel:
 
     # Stop compress
     compressed_data = stop_compress(data, stop_compress_delta)
 
     # Create tau
-    N = compressed_data.shape[0]
-    tau = [(x + 1) / N for x in range(N)]
     sorted_data = compressed_data.sort_values('timestamp')
-    sorted_data['tau'] = tau
+    sorted_data['tau'] = compute_tau(sorted_data)
 
     # Compute time left
     arrival_time = sorted_data.iloc[-1].timestamp
@@ -273,42 +311,65 @@ def learn_trajectory_model(
                  for t in sorted_data.timestamp]
     sorted_data['time_left'] = time_left
 
-    # Data augmentation
+    # Learn f
+    f_domain = ['tau']
+    f_kernel = GPy.kern.RBF(
+        input_dim=len(f_domain),
+        ARD=False
+    )
+    f = learn_function(
+        sorted_data, f_domain,
+        f_codomain, f_kernel, 'f',
+        priors=f_priors,
+        n_restarts=n_restarts,
+        fixed_likelihood=fix_f_likelihood,
+        verbose=verbose
+    )
+
+    # Data augmentation for g
     data0 = sorted_data.iloc[0]
     v = obs_vector(data0)
     u = delta_vector(data0, sorted_data.iloc[1])
-    start_stretch_len = 10
-    start_stretch = [move_to(data0.copy(), v-u*x)
-                     for x in range(start_stretch_len)]
-    
-    dataN = sorted_data.iloc[-1]
-    w = obs_vector(dataN)
-    z = delta_vector(dataN, sorted_data.iloc[-2])
-    stop_stretch_len = 10
-    stop_stretch = [move_to(dataN.copy(), w-z*x)
-                     for x in range(stop_stretch_len)]
-    
-    support_data = create_support_data(sorted_data, n_augment_samples, augment_sigma)
-    augmented_data = sorted_data.append(support_data)#.append(start_stretch).append(stop_stretch)
+    support_data = create_support_data(
+        sorted_data, f, n_augment_samples,
+        augment_delta, augment_sigma
+    )
+    augmented_data = \
+        sorted_data[g_domain + f_domain] \
+        .append(support_data)
 
-    # Learn all GPs
-    f = learn_function(
-        sorted_data, ['tau'], codomain_f, 'f',
-        priors=f_priors, 
-        n_restarts=n_restarts)
-
+    # Learn g
+    g_kernel = GPy.kern.RBF(
+        input_dim=len(g_domain),
+        ARD=False
+    )
     g = learn_function(
-        augmented_data, domain_h, ['tau'], 'g',
-        priors=g_priors, 
-        n_restarts=n_restarts, 
-        fixed_likelihood=fix_f_likelihood)
+        augmented_data, g_domain,
+        f_domain, g_kernel, 'g',
+        priors=g_priors,
+        n_restarts=n_restarts,
+        verbose=verbose
+    )
+
+    h_domain = ['tau']
+    h_kernel = GPy.kern.RBF(
+        input_dim=len(h_domain),
+        ARD=False
+    ) + GPy.kern.Linear(
+        input_dim=len(h_domain),
+        ARD=False
+    )
 
     h = learn_function(
-        sorted_data, ['tau'], ['time_left'], 'h',
-        priors=h_priors, 
-        n_restarts=n_restarts)
+        sorted_data, h_domain,
+        ['time_left'], h_kernel, 'h',
+        priors=h_priors,
+        n_restarts=n_restarts,
+        verbose=verbose)
 
-    return TrajectoryModel(route, trajectory, f, g, h)
+    return TrajectoryModel(
+        route, trajectory, f, g, h
+    )
 
 
 # STORAGE
@@ -318,11 +379,12 @@ def acquire_db_conn():
     return pg.connect('dbname={} user={} password={}' \
                       .format(DB_NAME, DB_USER, DB_PW))
 
+
 def save_model(model: TrajectoryModel, conn) -> int:
     f_id = save_function(model.f, conn)
     g_id = save_function(model.g, conn)
     h_id = save_function(model.h, conn)
-    print(f_id, g_id, h_id)
+
     with conn.cursor() as cur:
         cur.execute(
             '''
@@ -342,6 +404,16 @@ def save_model(model: TrajectoryModel, conn) -> int:
     return model_id
 
 
+def model_from_db(res, conn):
+    f = load_function(res['fid'], conn)
+    g = load_function(res['gid'], conn)
+    h = load_function(res['hid'], conn)
+    return TrajectoryModel(
+        res['route'], res['segment'], f, g, h
+    )
+
+
+
 def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute(
@@ -352,15 +424,12 @@ def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
             AND segment = %s;
             ''',
             (route, segment))
-        res = cur.fetchone()
-        f = load_function(res['fid'], conn)
-        g = load_function(res['gid'], conn)
-        h = load_function(res['hid'], conn)
-        return TrajectoryModel(
-            res['route'], res['segment'], f, g, h
-        )
+        res = cur.fetchall()
 
-def save_function(func: FunctionModel , conn) -> int:
+    return [model_from_db(x, conn) for x in res]
+
+
+def save_function(func: FunctionModel, conn) -> int:
     """
     Saves the GP to a database using the provided connection.
     """
@@ -393,7 +462,6 @@ def load_function(func_id: int, conn) -> GP:
             WHERE id = %s;
             ''', (func_id,))
         res = cur.fetchone()
-        print(res)
 
     f_type = res['type']
     model = GPRegression.from_dict(dict(res['model']))
