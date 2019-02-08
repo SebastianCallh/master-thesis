@@ -384,11 +384,14 @@
     - [X] Time plan
 
 ** Project start
-*** TODO Review intro section and the use of the phrase "system"
-*** TODO Write delimitations
+*** DONE Review intro section and the use of the phrase "system"
+    CLOSED: [2019-02-01 fre 12:47]
+*** DONE Write delimitations
+    CLOSED: [2019-02-01 fre 12:47]
     Only sequential stops are considered.
 
-*** TODO Fix feedback from Tiger on thesis plan
+*** DONE Fix feedback from Tiger on thesis plan
+    CLOSED: [2019-02-01 fre 12:47]
     - Reverse the inverse. The synchronisation is not the primary entity
     - Synchronisation function does not need to depend on entire state space
     - Split trajectory representation, synchronisation and motion pattern modeling
@@ -403,6 +406,10 @@
      Evaluation: MAPE/MAE, posterior confidence variance (can be based on
      number of data points collected)
 
+**** Evaluation
+     - Read paper "Advantages of the mean absolute error (MAE)
+     over the root mean square error (RMSE) in assessing average model performance"
+     
 
 * Questions
   A place to quickly jot down questions so they are not forgotten.
@@ -463,6 +470,24 @@
     prediction model? It would motivate a probabilistic measurement
 
     The probabilisitic model handles uncertainty of the trajectory
+
+
+
+*** What math is actually going on when doing model selection before prediction?
+    "Jag saknar ett uttryck för 
+    P(\mathcal{M}_k \vert X = X_{observed})
+    dvs utan beroende på \tau.
+    X_{observed} är här en stokastisk variabel som beskriver det observerade statet S (som vi sedan faktiskt observerar) och X är en latent stokastiskt variabel som beskriver vad modellen tror att S ska vara.    Förslagsvis från Bayes sats och 
+    P(X = X_{observerd} \vert \mathcal{M}_k, X_{observed})"
+
+    Having m_k | x both in prior and posterior is tripping me up
+
+*** Motivation for interpolating or not when drawing support data
+    Varför på de observerade datapunkterna och inte på andra ställen
+    utmed mean prediction funktionen? (Det finns för- och nackdelar)
+
+    I lack any motivation for this apart from "it was the most simple
+    to implement"
 
 ** For Heintz
    This section contain questions for Fredrik Heintz, examiner of

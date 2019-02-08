@@ -1,5 +1,6 @@
 \documentclass[msc,lith,englisho]{liuthesis}
 
+
 \include{settings}
 
 % Packages
@@ -7,7 +8,10 @@
 \usepackage{color}
 \usepackage{float}
 
+
 % Notation
+\newcommand{\len}{\text{length}}
+\newcommand{\dur}{\text{duration}}
 \newcommand{\traj}{T}
 \newcommand{\obs}{x}
 \newcommand{\newobs}{\bar{x}}
@@ -36,6 +40,7 @@
 \dateofpublication{2019-05-08}
 \author{Sebastian Callh}
 
+
 \begin{document}
 \chapterstyle{VZ43}
 \include{content/intro}
@@ -44,6 +49,7 @@
 \include{content/data}
 \include{content/method}
 \include{content/results}
+
 \include{content/discussion}
 \include{content/conclusion}
 \printbibliography
