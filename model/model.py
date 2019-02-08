@@ -1,4 +1,3 @@
-
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
@@ -15,13 +14,13 @@ import psycopg2 as pg
 from psycopg2.extras import DictCursor
 from typing import List, NamedTuple
 import numpy as np
+from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame, Series
 import GPy
 from GPy.models import GPRegression
 from GPy.kern.src.kern import Kern
 from sklearn.preprocessing import StandardScaler
-
 
 # DB CONSTANTS
 DB_NAME = 'msc'
@@ -57,6 +56,19 @@ class FunctionModel(NamedTuple):
     y_scaler: StandardScaler
 
 
+def data_loglik(
+        model: FunctionModel, 
+        X: ndarray, 
+        Y: ndarray) -> float:
+
+    def loglik(x: ndarray, y: ndarray):
+        mu, sigma = predict(model, x.reshape(1, 1))
+        return -0.5*(y-mu)*np.linalg.inv(sigma)*(y-mu).T \
+                -0.5*np.log(np.abs(sigma))
+
+    return np.sum([loglik(x, y) for x, y in zip(X, Y)])
+
+
 def loglik(func: FunctionModel) -> float:
     return func.model.log_likelihood()
 
@@ -72,7 +84,7 @@ def normalise(data: DataFrame) -> DataFrame:
 def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
     x_scaled = func.x_scaler.transform(X)
     y_scaled, var = func.model.predict(x_scaled)
-    return (func.y_scaler.inverse_transform(y_scaled), var)
+    return func.y_scaler.inverse_transform(y_scaled), var
 
 
 def plot_function(func: FunctionModel, ax=None) -> ():
@@ -142,29 +154,31 @@ class TrajectoryModel(NamedTuple):
     g: FunctionModel
     h: FunctionModel
 
-
-def haversine(lon1, lat1, lon2, lat2):
-    """
-    Calculate the great circle distance between two points
-    on the earth (specified in decimal degrees)
-    """
-    # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    r = 6371 # Radius of earth in kilometers
-    return c * r
-
+# def predict_arrival_time(model: TrajectoryModel, X: ndarray) -> ndarray:
+    
 
 def stop_compress(data: DataFrame, delta: float) -> DataFrame:
     """ Downsamples the data such that each consecutive data point have a least
     delta distance between each other. Data that is very dense will skew the
     result since the aggreageted mean will be strongly defined by tightly clustered data.
     """
+
+
+    def haversine(lon1, lat1, lon2, lat2):
+        """
+        Calculate the great circle distance between two points
+        on the earth (specified in decimal degrees)
+        """
+        # convert decimal degrees to radians
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+        
+        # haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a))
+        r = 6371 # Radius of earth in kilometers
+        return c * r
 
     def mean_timestamp(timestamps):
         return pd.to_datetime(timestamps.values.astype(np.int64).mean())
@@ -239,6 +253,7 @@ def move_to(data, vec):
 def create_support_data(
         data: DataFrame,
         f: FunctionModel,
+        f_codomain: List[str],
         n_samples: int,
         delta: float,
         sigma: float) -> DataFrame:
@@ -267,8 +282,8 @@ def create_support_data(
         ]
 
         acc.extend([
-            {'lat': x[0][0],
-             'lon': x[0][1],
+            {f_codomain[0]: x[0][0],
+             f_codomain[1]: x[0][1],
              'tau': tau_grid[n]}
             for x in samples
         ])
@@ -306,10 +321,10 @@ def learn_trajectory_model(
     sorted_data['tau'] = compute_tau(sorted_data)
 
     # Compute time left
-    arrival_time = sorted_data.iloc[-1].timestamp
-    time_left = [(arrival_time - t).seconds
-                 for t in sorted_data.timestamp]
-    sorted_data['time_left'] = time_left
+    #arrival_time = sorted_data.iloc[-1].timestamp
+    #time_left = [(arrival_time - t).seconds
+    #             for t in sorted_data.timestamp]
+    #sorted_data['time_left'] = time_left
 
     # Learn f
     f_domain = ['tau']
@@ -331,7 +346,7 @@ def learn_trajectory_model(
     v = obs_vector(data0)
     u = delta_vector(data0, sorted_data.iloc[1])
     support_data = create_support_data(
-        sorted_data, f, n_augment_samples,
+        sorted_data, f, f_codomain, n_augment_samples,
         augment_delta, augment_sigma
     )
     augmented_data = \
@@ -342,7 +357,11 @@ def learn_trajectory_model(
     g_kernel = GPy.kern.RBF(
         input_dim=len(g_domain),
         ARD=False
+    ) + GPy.kern.Linear(
+        input_dim=len(g_domain),
+        ARD=False
     )
+
     g = learn_function(
         augmented_data, g_domain,
         f_domain, g_kernel, 'g',
@@ -411,7 +430,6 @@ def model_from_db(res, conn):
     return TrajectoryModel(
         res['route'], res['segment'], f, g, h
     )
-
 
 
 def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
