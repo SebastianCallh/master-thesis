@@ -7,11 +7,6 @@ also covers related work relevant to clustering of trajectory data
 and event detection in motion patterns.
 
 \section{Arrival Time Prediction}
-Arrival time prediction is, in a nutshell, the problem of answering
-the question ``When does the bus arrive?''. Formally, the goal is to
-learn a function $t = f(x)$ for arrival time $t$ and some vector $x$, which
-contains information on the current state of the world. For instance, it
-could contain the position of the closest vehicle and the time of day.
 In recent years, machine learning techniques have been very successful
 at predicting the arrival time with small errors, and Long Short-Term 
 Memory Networks (LSTMs) in particular have proven
@@ -45,9 +40,20 @@ context of this thesis the name motion pattern learning will be used.
 \end{figure}
 Motion pattern learning has a natural interpretation as a
 clustering problem, but clustering trajectories is difficult,
-since different trajectories can have different lengths.
-This means that they do not exist in the same vector space and are not
-naturally comparable using similarity metrics based on Euclidan
+since different trajectories can have different \textit{lengths} and
+\textit{durations}. The length of a trajectory is the amount of
+observations in it, and the duration is the time from the first
+observation to the last, chronologically. An illustration of the
+difficulties brought by this can be seen in Figure~\ref{fig:trajectory-projection-problems}.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/trajectory-projection-problems}
+  \caption{An illustration of trajectories $\traj_{i}$ and $\traj_{j}$
+    with different lengths and duration. There is no natural way of
+    measuring the distance between them.}\label{fig:trajectory-projection-problems}
+\end{figure}
+Having different lengths places trajectories in different vector spaces,
+in which they have no natural comparison using similarity metrics based on Euclidan
 distance. Because of this, more advanced similarity metrics often need to be used. 
 
 \subsection{Trajectory Similarity Metrics}\label{sec:traj-sim-metrics}
@@ -55,22 +61,23 @@ There are several ways to construct a similarity metric for
 trajectories. Some widely-used metrics are Euclidan distance,
 Dynamic Time Warping (DTW), Longest Common Sub-Sequence (LCSS), and Edit
 Distance (ED)~\cite{Wang2013Jan}. DTW and LCSS have seen use in
-motion pattern learning~\cite{Tang2018Aug, Vlachos2002Feb}, but suffer
+motion pattern learning~\cite{Tang2018Aug, Vlachos2002Feb}, but only
+work with discrete time-series data. Furthermore, they also suffer
 from high time-complexity, making them unsuitable for real time processing~\cite{Zhang2006Aug}
-An alternative to previously mentioned similarity metrics are probabilistic
-approaches, where models are fit to trajectories
-and similarity is measured as data likelihood~\cite{Kim2011Nov, Tran2014Jun, Tiger2015Jul}.
-One advantage of a probabilistic approach are that it is not limited by
+An alternative to previously mentioned similarity metrics is to create
+a probabilistic model for the data, and use data
+likelihood as a similarity metric~\cite{Kim2011Nov, Tran2014Jun, Tiger2015Jul}.
+One advantage of a probabilistic model is that it is not limited by
 purely spatial information, since any information about the trajectories can
 be modeled. For instance, spatial position could be combined
-with velocity and acceleration.
+with velocity and acceleration. 
 
-\subsection{Probabilistic Approaches}
-The probabilistic approach to trajectory learning assumes a model for each motion pattern
-and infers its parameters from data. This is incredibly similar to how
-probabilistic models are used to create similarity metrics, but instead this
-is done for a cluster of trajectories. Two popular approaches for this
-is GPs and hierarchical Bayesian models.
+\subsection{Probabilistic Motion Pattern Learning}
+The probabilistic approach to motion pattern learning assumes a model for each motion pattern
+and infers its parameters from data. As previously mentioned, the data
+likelihood of these models is used as a similarity metric, which
+is required to compare trajectories and identify common motion patterns.
+Two popular models for this is GPs and hierarchical Bayesian models.
 
 \subsubsection{Gaussian Processes}
 GPs have been used in several domains for modeling trajectories.

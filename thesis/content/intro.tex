@@ -100,7 +100,8 @@ The first step in the system requires a way of comparing
 trajectories, which is not straight-forward. The reason for this is that trajectories
 can have different lengths and unevenly spaced observations.
 The proposed way of doing this is by \textit{synchronising} them,
-by modeling the trajectories spatial position as two independent GPs \(f_x(\tau) \mapsto
+by modeling the trajectories spatial position as two independent
+Gaussian processes (GPs) \(f_x(\tau) \mapsto
 x\), \(f_y(\tau) \mapsto y\) for $\tau = [0,1]$, and learning an
 inverse GP \(f(x, y) \mapsto \tau\). A similarity
 metric for model \(M_k\) is then given by the likelihood \(P(u, v | M_k)\), where
@@ -112,7 +113,7 @@ $u$ and $v$ are given by the function compositions \(u = (f_{y} \circ g)(x, y)\)
 %so in total the functions $(x, y) \mapsto \tau \mapsto
 %x, y$ would be modeled for $\tau = [0,1]$.
 
-\subsection{Trajectory Clustering}
+\subsection{TrajectoryClustering}
 Given a similarity metric, trajectories can be
 clustered. Agglomerative clustering is proposed for this task.
 One difficult question with clustering is what value of similarity to consider
@@ -143,12 +144,12 @@ patterns. This can be done by asserting a GP for the motion pattern,
 and searching over different kernel structures to maximise marginal
 likelihood. By searching over kernels which carry a specific meaning (in this case
 kernels would correspond to specific events), it is possible to
-detect events based on the kernel composition.
+detect events based on the kernel composition~\cite{duvenaud2013structure}.
 
 \section{Aim}
 \label{sec:aim}
 The aim of this thesis project is to model motion patterns of public
-transport vehicles using Gaussian Processes (GPs), and use these
+transport vehicles using Gaussian Processes, and use these
 models to make arrival time predictions with an accuracy that is
 competitive to current state-of-the-art models~\cite{Sinn2012Sep,
   Gurmu2014, pang2018learning}. Furthermore, the project aims to
@@ -166,10 +167,11 @@ detected.
 \item How can Gaussian processes be used to capture trajectory motion
   patterns, such that arrival time predictions based on these patterns minimise MAE?
 
-\item How can similar trajectories be clustered, such that ...?
+\item How can similar trajectories be clustered into motion patterns, 
+  such that arrival time predictions based on these patterns minimise MAE? 
   
 \item How can specific events be automatically detected in a
-  motion pattern?
+  motion pattern using compositional kernel search?
 
 \item How can outlier motion patterns be detected?
 \end{enumerate}

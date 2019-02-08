@@ -1,6 +1,6 @@
 \chapter{Data}\label{ch:data}
 The data is provided by Östgötatrafiken, and follows a certain format.
-A single observation comprises a timestamp, GPS position, velocity, direction, and a
+A single observation comprises a timestamp, GPS position, and a
 specific event type. Depending on the event type,
 additional fields will be present. There are 22 different event types,
 but only four of them are relevant for the thesis project.
@@ -22,24 +22,26 @@ illustrated in Figure~\ref{fig:example-observation}.
 \end{figure}
 All data is sent from either buses or trains. However since the thesis
 project is limited to trains, observations sent from trains are
-discarded. The different even types are sent under different
-circumstances, described in Table~\ref{tbl:event-sent}.
+discarded. A summary of the different even types, including when they
+are sent can be seen in Table~\ref{tbl:event-sent}.
 
 \begin{table}
   \centering
-  \caption{Table of event types and a description of when they are sent.}\label{tbl:event-sent}
+  \caption{Summary of the event types used in the thesis project.}\label{tbl:event-sent}
+\resizebox{14.5cm}{!}{
   \begin{tabular}{ |l|l|l| }
     \hline
-    Event type & Sent \\ 
+    Event type & Additional data & Sent \\ 
     \hline
-    ObservedPositionEvent & Approximately every second. \\
-    EnteredEvent & When driving sufficiently close to a bus stop. \\ 
-    JourneyStartedEvent & When a bus is assigned a journey, before it
-                          leaves the station. \\
-    JourneyCompletedEvent & When a bus enters the final bus stop on a
-                            bus line. \\ 
+    ObservedPositionEvent &  Velocity, Direction & Approximately every second. \\
+    EnteredEvent & Station name & When driving sufficiently close to a bus stop. \\ 
+    JourneyStartedEvent & Bus line id & When a bus is assigned a journey, before it
+                                        leaves the station. \\
+    JourneyCompletedEvent & & When a bus enters the final bus stop on a
+                              bus line. \\ 
     \hline
   \end{tabular}
+}
 \end{table}
 
 Since the ObservedPositionEvent is sent every second it causes
@@ -55,7 +57,8 @@ Figure~\ref{fig:bus203-heatmap} which shows this phenomenon.
   \includegraphics[scale=0.25]{bus203-heatmap}
   \caption{Heat map of observations collected in the beginning of bus line 3. 
     Red indicates areas with high frequency of observations and green indicates areas with
-    low frequency.}\label{fig:bus203-heatmap}
+    low frequency. The start of the route is in the top left, where
+    the frequency of observations is very high. }\label{fig:bus203-heatmap}
 \end{figure}
 
 %\[[2018-02-16T00:00:10.0000000+01:00, 2, ObservedPositionEvent, 2568098808, Normal, 0.0, Train, otraf.se, 9031005990006067, 6067, 58.5866813659668,16.2035980224609, 58.5866813659668,16.2035980224609, 291.700012207031, 0, 2500714]\]

@@ -139,9 +139,77 @@ This document is for logging the day-by-day progress of my master's thesis.
    continue the implementation. However, it would be nice to get the
    boring stuff out of the way as soon as possible, so I'll write the
    data chapter toady anyway. I've also got over six weeks until
-   half-time meeting.
+   half-time meeting. Didn't have much focus today.
+
+** <2019-01-30 ons>
+   I tried to get plotting to work, to no avail. I even went home, got
+   the requirements.txt file used for TDDE19, but even that doesn't
+   work. I tried to use the plotly backend, but it refuses to be
+   imported into a notebook. As a final solution I went online to get
+   the matplotlib documentation and GPy source code to implement
+   plotting myself, but something is seriously fucked up with the
+   internet, since every page gives [[https://support.mozilla.org/en-US/kb/what-does-your-connection-is-not-secure-mean][this error]].
+
+   I also tried to get predictions out 
+
+** <2019-01-31 tor>
+   I spent the day at home, because the reasons described
+   yesterday. The issue on GitHub got reopened, so hopefully that will
+   result in a fix on its own while I continue to work. I made quite
+   some progress today though! I implemented training, plotting and
+   storing models in a Python module. The final (and most difficult)
+   step is the prediction step, which I might just finish this evening.
+   Tiger also responded with feedback today, so I will work on the
+   report tomorrow.
+
+** <2019-02-01 fre>
+   I've read through Tigers comments and have managed to work through
+   most of them. Some of the math in the final prediction elude me, so
+   I'm heading to his office this afternoon to ask some questions. 
    
+   A lot of stuff in theory and intro should be condensed into the
+   background chapter, and I think this is the right time to do it. It
+   should establish a baseline of what I can expect the reader to know
+   when they read the methods chapter.
+
+   I sent a weekly summary to Tiger.
+   
+   I had a great meeting with Tiger with feedback on the plots I sent
+   with the weekly summary. A lot of improvements was found:
+   - Add linear kernel to \(g\)
+   - Add linear kernel to \(h\)
+   - Fix likelihood variance \(g\)
+   - Respect aspect ratio when down
+   - Interpolate data augmentation
+
+** <2019-02-03 sön>
+   Today I started implementing the improvements from the meeting with
+   Tiger. It went great and the model looks a lot better! Left to do
+   is is the mapping of lat/lon to an Euclidian space and linear
+   kernel on \(g\).
+   
+* Week 6
+  <2019-02-04 mån>
+  Added linear kernel to \(g\). Started writing background chapter
+  with starting machine learning. It is really hard. Really stressed
+  out about Klarna as well.
+
+  <2019-02-05 tis>
+  Interview day with Klarna, and what a train-wreck of a day it
+  was. Got a few sentences down on the train, but nothing much.
+
+  <2019-02-06 ons>
+  Took a break from writing and finished up the implementation on
+  arrival time prediction. It is total shite, and only one prediction
+  has any meaningful probability mass. It seems like the learned
+  trajectories also have the exact same pattern every time, which
+  makes me highly suspicious on the implementation. Need to look for
+  bugs. 
+
+  <2019-02-07 tor>
+  
 * Week 11
+
   Sometime this week the half-time meeting will take place.
   This is probably a good time to find an opponent, since it will be
   more obvious who will finish their work in time.
