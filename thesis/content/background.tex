@@ -1,21 +1,21 @@
 \chapter{Background}
 This chapter describes theoretic results that this thesis is based
-on. Should the reader already be familiar with machine learning, and
-in particular Gaussian Processes, this chapter can be safely skipped.
+on. It covers trajectory data, supervised machine learning from a
+Bayesian perspective, GPs, and arrival time prediction using machine learning.
 
 \section{Trajectory Data}
 A \textit{trajectory} $\traj_{k}$ of can be seen as an ordered collection of
-observations $(x^{(k)}_1, x^{(k)}_2, \dots, x^{(k)}_N)$.
+observations $(\obs^{(k)}_1, \obs^{(k)}_2, \dots, \obs^{(k)}_N)$.
 The thesis project focuses on \textit{spatio-temporal}
 trajectories, which mean that each observation in a trajectory has a position both in time
 and in space. A trajectory has a \textit{length} and
-a \textit{duration}, where the length of a trajectory is its number of
-observations $\len(\traj_{k}) = N$, and the duration is the time from the first
-observation to the last $\dur(\traj_{k}) = \text{time}(x^{(k)}_N) - \text{time}(x^{(k)}_1)$. 
+a \textit{duration}. The length $\len(\traj_{k}) = N$ is the number of
+observations, and the duration $\dur(\traj_{k}) = \text{time}(\obs^{(k)}_N) - \text{time}(\obs^{(k)}_1)$
+is the time from the first observation to the last.
 These properties are in general not the same for different
-trajectories, which makes is difficult to compare trajectories in a
-meaningful way. In particular, having a different length complicates
-things. If a set of trajectories all have the same length, they could
+trajectories, which makes it hard to compare them in a
+meaningful way. Having different lengths makes a comparison
+particularly difficult. If a set of trajectories all have the same length, they could
 be viewed as vectors, with one observation per dimension, and compared
 using Euclidian distance. But trajectories of different lengths do not
 exist in the same vector space, so Euclidian distance fails and more
@@ -30,7 +30,7 @@ An illustration of trajectories with different length can be seen in Figure~\ref
 \end{figure}
 
 \section{Supervised Machine Learning}
-Machine learning is the process of training computers programs to
+Supervised machine learning is the process of training computers programs to
 recognise patterns in data~\ref{Bishop-2006}. It is incredibly
 flexible, and can find patterns such as ``What
 temperature is expected for this time of year on this geographical
@@ -39,71 +39,108 @@ type of pattern of continuous temperature is called
 \textit{regression}, and finding the
 second pattern with a discrete number of subjects is called
 \textit{classification}. Both types of problems have two inputs: 
-the \textit{input matrix}
+the \textit{observations}
 \[X =
   \begin{pmatrix}
-    x_{1}^{1} & x_{2}^{1} & \cdots & x_{D}^{1} \\
-    x_{1}^{2} & x_{2}^{2} & \cdots & x_{D}^{2} \\
+    \obs_{1}^{1} & \obs_{2}^{1} & \cdots & \obs_{D}^{1} \\
+    \obs_{1}^{2} & \obs_{2}^{2} & \cdots & \obs_{D}^{2} \\
     \vdots  & \vdots  & \ddots & \vdots  \\
-    x_{1}^{N} & x_{2}^{N} & \cdots & x_{D}^{N} \\
+    \obs_{1}^{N} & \obs_{2}^{N} & \cdots & \obs_{D}^{N} \\
   \end{pmatrix},
 \]
-containing $N$ samples, and the \textit{target vector} $Y = (y_{1},
-y_{2}, \dots, y_{N})$. The
+containing $N$ observations, and the \textit{target vector} $Y = (y_{1},
+y_{2}, \dots, y_{N})$. In the first example of predicting temperatures,
+$X$ could contain rows of latitude, longitude and time of year, and $Y$ the
+corresponding recorded temperatures. The
 goal is to learn how the input and output is related by finding a model which approximates a $D$-ary function $y_n =
-f(x_n)$ for $1 \leq n \leq N$. Such a model could then
-\textit{predict} $y$ for a previously unseen input $\hat{x}$. However,
-before predictions can be made, the model has to be \textit{trained}
-on data. While there are many types of models, the remainder of this
-section describes the process of training a model,
-and using it to make predictions in a Bayesian framework.
+f(\obs_n)$ for $1 \leq n \leq N$. Such a model could then
+predict $y$ for a previously unseen input $\hat{\obs}$. The way a
+model approximates $f$ depends entirely on the model, of which there
+are many. Common for all models however, is that they are all \textit{trained}
+on data. It is during this process they learn the patterns in the data
+which they then use to make predictions.
+While there are many approaches to this, the remainder of this
+section describes the process of selecting and training models,
+and using them to make predictions from a Bayesian point of view.
 
 \subsection{Model Training}
-The first step is to pick a model for the data, which in a probabilistic
-framework is a probability distribution $P(X \vert \theta)$, where
-$\theta$ is a hyper-parameter vector to the probability distribution.
+The first step is to pick a model for the data, which in a Bayesian
+framework is a probability distribution $\prob(X \vert \hyperparam)$, where
+$\hyperparam$ is a hyper-parameter vector to the distribution.
 This is known as the \textit{likelihood}, which describes how likely
-the data is given a certain $\theta$. One way of training a model is
-by finding $\hat{\theta} = \underset{\theta}{\mathrm{argmax}} P(X \vert \theta)$, 
+the data is given a certain $\hyperparam$. One way of training a model is
+by finding $\hat{\hyperparam} = \underset{\hyperparam}{\mathrm{argmax}} \prob(X \vert \hyperparam)$, 
 which is called \textit{maximum likelihood}-estimation (ML-estimation), since it picks the
-$\theta$ that maximises the likelihood of the data. However, this picks a single
-``best value'', highly sensitive to the choice of training data, which is sensitive to something called \textit{over-fitting}.
+$\hyperparam$ that maximises the likelihood of the data. However, this picks a single
+``best value'', highly sensitive to the choice of training data, which
+can lead to a problem called \textit{over-fitting}.
 
 \begin{figure}
-  \centering
-  \includegraphics[width=0.7\textwidth]{figures/trajectory-projection-problems}
-  \caption{TODO.}\label{fig:over-fitting-example}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.5,width=\textwidth]{figures/over-fit-example}
+    \caption{Example of an over-fit in a classification problem. The
+      function separating the two classes is too flexible, and captures observations
+      which should be consider noise. This model will have
+      in general have worse generaliseation. }\label{fig:over-fit-example}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.48,width=\textwidth]{figures/good-fit-example}
+    \caption{Example of a good fit in a classification problem. The
+      function separating the two classes captures the generale structure of the
+      data. Even though this misclassifies some observations, this
+      model stands a much better chance at generalising.}\label{fig:good-fit-example}
+  \end{minipage}
 \end{figure}
 
 The goal when training a model is to learn patterns that
-\textit{generalise} to unseen data, which typically mean that the
-model can not be \textbf{too} flexible. Over-fitting is the phenomenon
-when a model is too flexible and captures characteristics in data which could be
-considered noise, which do \textbf{not} generalise. An example of
-this can be seen in Figure~\ref{fig:over-fitting-example}. One way of
-avoiding over-fitting is to use \textit{Bayesian inference}, in which 
+\textit{generalise} to unseen data. If $\hyperparam$ is estimated
+from data using ML, it is possible to find a $\hat{\hyperparam}$ that
+makes for an increadibly flexible model which \textit{perfectly}
+captures the patterns in the data. However, it is very common for data
+to contain noise and outliers, which do not represent a pattern that
+generalise well. A model that learns these is said to have
+\textit{over-fit}, which is highly undesireable. An illustration of
+this can be seen in Figure~\ref{fig:over-fit-example}, together with Figure~\ref{fig:good-fit-example}.
+
+One way of avoiding over-fitting is to use \textit{Bayesian inference}, in which 
 Bayes theorem
 \begin{equation}
   \label{eq:bayes}
-  P(\theta \vert X) = \frac{P(X \vert \theta) P(\theta)}{P(X)}
+  \prob(\hyperparam \vert X) = \frac{\prob(X \vert \hyperparam) \prob(\hyperparam)}{\prob(X)}
 \end{equation}
-is used to estimate $\theta$ from the \textit{posterior} distribution $P(\theta \vert X)$.
+is used to estimate $\hyperparam$ from the \textit{posterior} distribution $\prob(\hyperparam \vert X)$.
 This process is called \textit{maximum a posteriori}-estimation (MAP-estimation). To use Bayes
-rule a \textit{prior} distribution $P(\theta)$ must be specified, which formalises
-a prior belief about $\theta$ before observing any data. The prior is
+rule a \textit{prior} distribution $\prob(\hyperparam)$ is required, which formalises
+a prior belief about $\hyperparam$ before observing any data. The prior is
 subjective, and different people may pick different priors,
-representing their personal belief in the data. By picking a
+representing their personal belief about the data. By picking a
 prior corresponding to a not-too-flexible model, over-fitting can be
-avoided. In summary, the process of training a model is equivalent with computing
+avoided. In the case of GPs, this corresponds to picking a very wide
+kernel, which implies a high correlation between observations further
+apart, which in turn implies a more slowly-varying function.
+In summary, the process of training a model is equivalent to computing
 the posterior, from which the most probable model parameters can be
-extracted.  
-
-Training a model using ML- or MAP-estimation both require that the
+extracted. Training a model using ML- or MAP-estimation both require that the
 likelihood can be optimised. This is not always possible to do in
 closed form, in which case iterative methods, such as Stochastic
 Gradient Descent (SGD) can be used. These types of methods are
 prone to to finding local optimas, so random restarts need to be used
 to increase the chances of finding a good parametrisation.
+
+If a prior is specified, it is possible to estimate the parameters of
+model $\model$ \textit{without} fitting it to data, avoiding the
+problem of over-fitting entirely. This is done by maximising the
+\textit{marginal likelihood}
+\begin{equation}
+  \label{eq:marginal-likelihod}
+  \prob(\obs \vert \model) = \int \prob(\obs \vert \hyperparam,
+  \model) \prob(\hyperparam \vert \model) \prop(\hyperparam) d\hyperparam
+\end{equation}
+which considers both the uncertainty in $\obs$ and
+$\hyperparam$. However, the marginal likelihood is very sensitive to
+the choice of prior, so if the prior is not selected carefully this
+way of estimating $\hyperparam$ will produce a bad model.
 
 \subsection{Making Predictions}
 When the model is trained, it can be used to make predictions
@@ -111,44 +148,80 @@ about new observations, via the \textit{posterior
   predictive distribution}
 \begin{equation}
   \label{eq:posterior-predictive}
-  P(y \vert X) = \int P(y|X,\theta)P(\theta \vert X) d \theta,
+  \prob(y \vert X) = \int \prob(y|X,\hyperparam)\prob(\hyperparam \vert X) d \hyperparam,
 \end{equation}
+\begin{figure}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.48,width=\textwidth]{figures/high-confidence}
+    \caption{Illustration of the 95\% credible intervals for the
+    posterior predictive distribution for a regression model. The 
+    predictive distribution is narrow, giving tighter
+    confidence bands.}\label{fig:high-confidence}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.5,width=\textwidth]{figures/low-confidence}
+    \caption{Illustration of the 95\% credible intervals for the
+    posterior predictive distribution for a regression model. In this
+    case the predictive distribution is very wide, giving wider
+    confidence bands.}\label{fig:low-confidence}
+  \end{minipage}
+\end{figure}
+
 which accounts for the parameter uncertainty through the
-marginalisation of $\theta$. The resulting distribution over $y$ can
-then be used to make predictions using a suitable statistic. 
+marginalisation of $\hyperparam$. From the predictive distribution,
+very sophisticated predictions can be made. The ``best guess'' of $y$
+is represented by $\text{E}[y \vert X]$, and thanks to having
+an entire distribution it is possible to compute exactly how certain
+it is. This can be done by computing the \textit{credible
+  intervals}~\cite{Morey2016Feb} for the distribution, which is the
+span in which a certain amount of probability mass lies. For instance,
+the 95\%-credible interval would contain 95\% of the probability mass,
+which can be interpreted as a 95\% chance of future observations
+falling inside this span. An illustration of credible intervals can be seen in
+Figure~\ref{fig:high-confidence} and Figure~\ref{fig:low-confidence}.
 
 \section{Arrival Time Prediction}
 Arrival time prediction is, in a nutshell, the problem of answering
-the question ``When does the bus arrive?''. Formally, the goal is to
+the question ``When does the bus arrive?''. When viewed as a machine
+learning problem, the goal is to
 learn a function $\arrtime = f(\obs)$ for arrival time $\arrtime$ and 
-some vector $\obs$, which
+state vector $\obs$, which
 contains information on the current state of the world. For instance, it
-could contain the position of the closest vehicle and the time of day.
+could contain the position of a bus and the time of day.
 
 \subsection{Prediction Evaluation}
-Two complementary ways of evaluating how good a prediction is are the metrics
-\textit{Mean Absolute Error} (MAE) and \textit{Mean Absolute Percentage
-  Error} (MAPE), defined for the true value $\hat{t}$ as 
+The \textit{Mean Absolute Error} (MAE), defined as
 \begin{equation}
   \label{eq:mae}
   MAE(\hat{t}, t) = \frac{1}{n}\sum_{i=1}^{n}{\vert \hat{t} - t \vert},
 \end{equation}
-and
-\begin{equation}
-  \label{eq:mape}
-  MAPE(\hat{t}, t) = \frac{1}{n}\sum_{i=1}^{n} \vert \frac{\hat{t} - t}{\hat{t}} \vert
-\end{equation}
-respectively. 
+for true value $\hat{t}$, provides a natural interpretation as 
+``the average of the total error'' which is a relevant
+and easy-to-understand quantity~\cite{willmott2005advantages}.
 
-Find source for criticism on MAPE. 
-Find source for choosing MAE.
+%% Two complementary ways of evaluating how good a prediction is are the metrics
+%%  (MAE) and \textit{Mean Absolute Percentage
+%%   Error} (MAPE), defined for the true value $\hat{t}$ as
+%% and
+%% \begin{equation}
+%%   \label{eq:mape}
+%%   MAPE(\hat{t}, t) = \frac{1}{n}\sum_{i=1}^{n} \vert \frac{\hat{t} - t}{\hat{t}} \vert
+%% \end{equation}
+%% respectively. 
+
+%%  MAPE on the other hand calculates a relative
+%% error~\cite{Armstrong1992Jun}, which is unaffected by the
+%% magnitude. One issue with it is that it is only defined for $\hat{t}
+%% \ne 0$. 
+%% These metrics are complementary
 
 \section{Gaussian Processes}
 A GP generalises a multivariate normal distribution, and can be seen
 as a distribution over functions, completely defined by its
-mean function $m(x)$ and covariance function, or kernel $k(x, x',
-\theta)$~\cite{Rasmussen-Williams-2006}. Here, $x$ and $x'$ are
-elements in the domain of modeled functions, and $\theta$ a
+mean function $m(x)$ and covariance function $k(x, x', \hyperparam)$~\cite{Rasmussen-Williams-2006}. 
+Here, $x$ and $x'$ are
+elements in the domain of modeled functions, and $\hyperparam$ a
 vector of hyper-parameters for the covariance function. For any input
 vector $x$, the output $y$ is assumed jointly normally distributed according to
 \begin{equation}
@@ -167,23 +240,128 @@ where
 and $\textbf{K}$ is the gram matrix with elements $K_{ij} = k(x_i, x_j)$ and $\textbf{V}
 = K(x, x) + \sigma_n^2I$.
 In the context of this thesis, the mean function $m(x)$ can be assumed to be $m(x) = 0$
-without loss of generality, making the kernel $k(x, x', \theta)$
-the only free parameter. Picking a specific kernel represents a prior
+without loss of generality, making the covariance function $k(x, x', \hyperparam)$
+the only free parameter. Picking a specific function represents a prior
 belief on how values close in $y$ are related, expressed in $x$. This
 concept is explored in more detail in Section~\ref{sec:kernels-as-priors}.
 Training a GP is typically done using maximum likelihood
-estimation. That is, the GP parameters $\theta$ are optimised to
+estimation. That is, the GP parameters $\hyperparam$ are optimised to
 maximise the data likelihood. Unfortunately, this is non-convex
 optimisation problem, so
 iterative methods have to be used. The likelihood function is
 non-convex, which introduces a high risk of finding local minimas
 during the optimisation process. Because of this, random restarts are
-typically required to find a good $\theta$.
+typically required to find a good $\hyperparam$.
 
-\subsection{Kernel as Priors}\label{sec:kernels-as-priors}
+\subsection{Kernels as Covariance Functions}\label{sec:kernels-as-priors}
+Covariance function formalises a prior belief on the shape of the target
+function, by specifying how correlated function values $y$ are by
+evaluation the kernel function pair-wise on the observarions. 
+While in practice any binary function can be plugged into
+a GP, a class of functions known as \textit{kernels} are typically
+used, since they have useful properties for expressing covariance. In
+particular, kernels are positive-definite functions, which in turn
+gives a positive-definite covariance matrix. This is required for it
+to be invertable, which in turn is required to compute the GP posterior. 
+The requirement of positive-definiteness makes intuitive sense, since covariance can not
+be negative. 
 
-Talk about different kernels and what prior beliefs they represent
+Kernels are increadibly flexible, and can be defined for other entities than continuous
+funtions, such as graphs, strings and
+images~\cite{duvenaud2013structure}. However, for this thesis project
+only kernels on continuous functions are considered. Kernels on
+continuous functions are able to express a wide range of prior beliefs, from linearity to symmetry and
+periodicity. Figure~\ref{fig:kernel-priors} illustrates several kernels
+found in the literature on continuous functions together with samples from their priors.
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{figures/kernel-priors-vert}
+  \caption{Illustration of different kernels and samples from their
+    priors. From left to right the kernel functions are RBF (Radial
+    Basis Fuction), Matern 32, linear kernel, and periodic kernel.}\label{fig:kernel-priors}
+\end{figure}
 
-\subsection{Gaussian Processes Regression}
+Even though a single kernel captures a lot of priors, it is sometimes
+desireable to express more complicated one. Fortunately,
+the set of kernel functions are closed under multiplication and addition, which
+creates a principled way of combining them, creating \textit{compound
+  kernels}~\cite{duvenaud2013structure}. Kernels can be combined as
+required to capture prior beliefs about periodicity \textit{and}
+linearity, for instance. Figure~\ref{fig:compound-kernels} illustrates
+the concept of compound kernels.
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/compound-kernels}
+  \caption{Illustration of compound kernels. In the top row RBF
+    and Matern 32 are combined by multiplication, and in the bottom
+    row a linear and periodic kernel are combined by addition.}\label{fig:compound-kernels}
+\end{figure}
 
 \subsection{Structure Discovery Using Gaussian Processes}
+Structure discovery is the problem of automatically learning the
+structure of data. By creating kernels for specific characteristics
+and combining them in a way that maximises the marginal likelihood, it
+is possible to detect said characteristics, based on the combination
+of kernels~\cite{duvenaud2013structure}.
+
+There are infintely many ways to construct compound kernels, and some
+kernel combinations explain a specific data set $X$ better than
+other. How well a kernel $k$ explains $X$ can be approximated
+by the Bayesian information criterion (BIC)
+\begin{equation}
+  BIC(k) = \log p(X \vert k) - \frac{1}{2} \vert k \vert \log N,
+\end{equation}
+where $\vert k \vert$ denotes the number of kernel parameters and $N$
+the number of observations. BIC assumes independence between
+observations conditioned on parameters, but this is in general not the
+case in a GP model. However, it has been shown to be a good enough approximation~\cite{duvenaud2013structure}.
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/compound-kernel-search}
+  \caption{Illustration of greedy search over kernel structures under
+    multiplication and addition, where the
+    expanded nodes are highlighted. Each kernels hyperparameters
+    $\hyperparam_i$ are learned from data, and the kernel that
+    minimises BIC the most is selected.}\label{fig:compound-kernel-search}
+\end{figure}
+
+With a way of comparing kernels established, it is interesting to find
+\textit{the best} compound kernel for $X$. That is, the kernel
+composition that maximises BIC. One way to do so is to
+greedily search over a set of pre-defined kernel compositions, fitting
+them to data as the search goes, and composing the ones that minimise
+the BIS into the compound kernel. This process is illustrated in Figure~\ref{fig:compound-kernel-search}.
+The structure of the resulting kernels reveals structure in the
+data. For instance, if the resulting kernel contains a RBF component and a periodic
+component, the data is locally correlated, and follow a periodic
+trend. This process can be used to automatically detect structure in
+data, from a cleaverly crafted set of kernels that correspond to
+known characteristics.
+
+\section{The Equirectangular Map Projection}
+Working with data in latitude-longitude space is tricky, since the two
+dimensinos are not scaled 1:1. To make it easier to work with such
+data, it can be projected onto a Euclidian space, where it can be
+described using cartesian coordiantes. However, since latitude and
+longitude describe points on an ellipsis, and cartesian coordiantes are
+orthogonal, a perfect projection does not
+exist~\cite{snyder1989album}. Because of this, several different
+projections have been invented, each making a different trade-off.
+One of these is the \textit{Equirectangular Projection}, which maps
+latitude $\phi$ and longitude $\lambda$ onto cartesian coordinates $x$
+and $y$ through
+\begin{equation}
+  \label{eq:equirectangular-projection}
+  \begin{split}
+    x = (\lambda - \lambda_0)&
+    \cos \phi_0 \\
+    y = (\phi - \phi_0),
+  \end{split}
+\end{equation}
+where $\lambda_0$ and $\phi_0$ define the
+central meridian and the standard parallels of the latitude-longitude
+space respectively. The projection is
+correct for $\phi = \phi_0$, but the further away points are from
+$\phi_0$ the larger the residuals will be. The $y$- and $x$--axis of
+the resulting cartesian coordinate system will be $\lambda_0$ and
+$\phi_0$ respectively.
