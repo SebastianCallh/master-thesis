@@ -1,3 +1,4 @@
+
 \chapter{Background}
 This chapter describes theoretic results that this thesis is based
 on. It covers trajectory data, supervised machine learning from a
@@ -65,11 +66,19 @@ and using them to make predictions from a Bayesian point of view.
 
 \subsection{Model Training}
 The first step is to pick a model for the data, which in a Bayesian
-framework is a probability distribution $\prob(X \vert \hyperparam)$, where
-$\hyperparam$ is a hyper-parameter vector to the distribution.
+framework is a probability distribution $\prob(\obs \vert \hyperparam)$, where
+$\hyperparam$ is a hyper-parameter vector to the distribution. The
+probability of all observations is then $\prob(X \vert \hyperparam) =
+\prob(\obs_1, \obs_2, \dots, \obs_N \vert \hyperparam)$. For
+mathematical convenience it is often assumed that the observed data
+come from the same distribution and that each observation is
+independent of all other. This means that the probability of a pair of observations $\obs_i$, $\obs_j$ is $\prob(x_i, x_j
+\vert \hyperparam) = \prob(\obs_i \vert \hyperparam)\prob(\obs_j
+\vert \hyperparam)$ and consequently, that the probability of observing all the data
+is $\prob(X \vert \hyperparam) = \prod_{i=1}^N\prob(\obs_i \vert \hyperparam)$.
 This is known as the \textit{likelihood}, which describes how likely
 the data is given a certain $\hyperparam$. One way of training a model is
-by finding $\hat{\hyperparam} = \underset{\hyperparam}{\mathrm{argmax}} \prob(X \vert \hyperparam)$, 
+by finding $\hat{\hyperparam} = \underset{\hyperparam}{\mathrm{argmax}}$ $\prob(X \vert \hyperparam)$, 
 which is called \textit{maximum likelihood}-estimation (ML-estimation), since it picks the
 $\hyperparam$ that maximises the likelihood of the data. However, this picks a single
 ``best value'', highly sensitive to the choice of training data, which
@@ -80,8 +89,7 @@ can lead to a problem called \textit{over-fitting}.
     \includegraphics[scale=0.5,width=\textwidth]{figures/over-fit-example}
     \caption{Example of an over-fit in a classification problem. The
       function separating the two classes is too flexible, and captures observations
-      which should be consider noise. This model will have
-      in general have worse generaliseation. }\label{fig:over-fit-example}
+      which should be consider noise. This model will not generalise well. }\label{fig:over-fit-example}
   \end{minipage}
   \hspace{5pt}
   \begin{minipage}{.46\textwidth}
@@ -95,7 +103,7 @@ can lead to a problem called \textit{over-fitting}.
 
 The goal when training a model is to learn patterns that
 \textit{generalise} to unseen data. If $\hyperparam$ is estimated
-from data using ML, it is possible to find a $\hat{\hyperparam}$ that
+from data using ML-estimation, it is possible to find a $\hat{\hyperparam}$ that
 makes for an increadibly flexible model which \textit{perfectly}
 captures the patterns in the data. However, it is very common for data
 to contain noise and outliers, which do not represent a pattern that
@@ -116,9 +124,10 @@ a prior belief about $\hyperparam$ before observing any data. The prior is
 subjective, and different people may pick different priors,
 representing their personal belief about the data. By picking a
 prior corresponding to a not-too-flexible model, over-fitting can be
-avoided. In the case of GPs, this corresponds to picking a very wide
-kernel, which implies a high correlation between observations further
-apart, which in turn implies a more slowly-varying function.
+avoided. In the case of GPs, this corresponds to a distribution over kernel
+parameter $\hyperparam$ which gives a very wide
+kernel. This implies a high correlation between observations further
+apart, which in turn implies a slowly-varying function.
 In summary, the process of training a model is equivalent to computing
 the posterior, from which the most probable model parameters can be
 extracted. Training a model using ML- or MAP-estimation both require that the
@@ -140,7 +149,8 @@ problem of over-fitting entirely. This is done by maximising the
 which considers both the uncertainty in $\obs$ and
 $\hyperparam$. However, the marginal likelihood is very sensitive to
 the choice of prior, so if the prior is not selected carefully this
-way of estimating $\hyperparam$ will produce a bad model.
+way of estimating $\hyperparam$ will produce a bad model. The integral
+can also be intractable to compute.
 
 \subsection{Making Predictions}
 When the model is trained, it can be used to make predictions
