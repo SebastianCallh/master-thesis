@@ -23,39 +23,6 @@ prediction both the destination and the arrival time.
 While these approaches do perform admirably with respect to accuracy, 
 they lack explainability and a way to quantify prediction uncertainty.
 
-\section{Motion Pattern Learning}
-Motion pattern learning is the problem of learning motion patterns from a
-set of trajectories, such that each pattern captures a different
-characteristic of the trajectories. An example with synthetic data can be
-seen in Figure~\ref{fig:motion-pattern-example}. Note that the term
-\textit{trajectory learning} is often used in the literature for the
-same problem, however, the term ``trajectory'' is ambiguous so in the
-context of this thesis the name motion pattern learning will be used. 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\textwidth]{figures/motion-pattern-example}
-  \caption{Synthetic data showing two motion patterns with two trajectories in
-    each. Trajectory 2 and 3 belong to one motion pattern and
-    Trajectory 1 and 4 belong to a second motion pattern.}\label{fig:motion-pattern-example}
-\end{figure}
-Motion pattern learning has a natural interpretation as a
-clustering problem, but clustering trajectories is difficult,
-since different trajectories can have different \textit{lengths} and
-\textit{durations}. The length of a trajectory is the amount of
-observations in it, and the duration is the time from the first
-observation to the last, chronologically. An illustration of the
-difficulties brought by this can be seen in Figure~\ref{fig:trajectory-projection-problems}.
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\textwidth]{figures/trajectory-projection-problems}
-  \caption{An illustration of trajectories $\traj_{i}$ and $\traj_{j}$
-    with different lengths and duration. There is no natural way of
-    measuring the distance between them.}\label{fig:trajectory-projection-problems}
-\end{figure}
-Having different lengths places trajectories in different vector spaces,
-in which they have no natural comparison using similarity metrics based on Euclidan
-distance. Because of this, more advanced similarity metrics often need to be used. 
-
 \subsection{Trajectory Similarity Metrics}\label{sec:traj-sim-metrics}
 There are several ways to construct a similarity metric for
 trajectories. Some widely-used metrics are Euclidan distance,
