@@ -1,29 +1,23 @@
-\chapter{Method}
-\label{cha:method}
-This chapter describes the proposed system for arrival time prediction
-and event detection, and its implementation.
+\chapter{Method}\label{cha:method}
+This chapter motivates the proposed system and derives a formal
+description of the proposed trajectory model from the problem of
+predicting arrival times by comparing trajectories. 
+It then describes the implementation details of the model, and what
+approximations and simplifications that have been made.
 
-\section{System Derivation}
-This section motivates the proposed system and derives a formal
-description of it from the
-problem of predicting arrival times by comparing trajectories. 
-Conceptually, the system assumes that similar trajectories, with
+\section{Model derivation}
+Conceptually, the model assumes that similar trajectories, with
 respect to their motion patterns, should arrive at 
 approximately the same time. When presented with a new trajectory, the system
 finds previously observed trajectories with similar motion patterns,
-and predict arrival times based on the most similar ones.
-
-The current system description assume that each trajectory represents
+and predict arrival times based on the most similar ones. Note that the current
+system description assume that each trajectory represents
 a motion pattern (motion pattern clusters has a single trajectory).
 
-\section{Trajectory Model}
 To find similar trajectories, a trajectory similarity metric 
 is needed. The similarity metric need to be well defined for
 trajectories of different temporal lengths, and unevenly
-distributed observations.
-
-\subsection{Synchronisation Model}
-One notion of similarity between trajectories is some aggregation of
+distributed observations. One way to define a similarity metric is as some aggregation of
 local similarities. Consider the local distance from an observation on trajectory
 $\traj_{i}$ to trajectory $\traj_{j}$ as the distance of the orthogonal
 projection onto $\traj_{j}$, as illustrated in Figure~\ref{fig:trajectory-projection}.
@@ -42,9 +36,9 @@ time. While continuous, this description is based on specific time
 points, but the \textit{exact points in time} of observations are not
 relevant, since trajectories for a single segment are generated at many different
 occasions. Instead, consider observations as samples from the function
-as $\traj_{k} = \modelf_{k}(\synchspace)$, where $\synchspace = [0, 1]$ is the \textit{progress} from
-start ($\synchspace = 0.0$) to finish ($\synchspace = 1.0$) of
-a trajectory. This function makes it possible to talk about observations based on
+as $\traj_{k} = \modelf_{k}(\synchspace)$, where $\synchspace = [0, 1]$ 
+is the \textit{progress} from start ($\synchspace = 0.0$) to finish ($\synchspace = 1.0$) 
+of a trajectory. This function makes it possible to talk about observations based on
 progression for any trajectory, regardless of the exact observation
 time points. 
 
@@ -55,35 +49,35 @@ independent outputs. This gives
 \begin{equation}
   \label{eq:f-posterior}
   \begin{split}
-  p_x \sim & \mathcal{N}(\mu_{p_x}, \Sigma_{p_x}), \\
-  p_y \sim & \mathcal{N}(\mu_{p_y}, \Sigma_{p_y}), \\
-  v_x \sim & \mathcal{N}(\mu_{v_x}, \Sigma_{v_x}), \\
-  v_y \sim & \mathcal{N}(\mu_{v_y}, \Sigma_{v_y}).
+  p_x \vert \synchspace \sim & \mathcal{N}(\mu_{p_x}, \Sigma_{p_x}), \\
+  p_y \vert \synchspace \sim & \mathcal{N}(\mu_{p_y}, \Sigma_{p_y}), \\
+  v_x \vert \synchspace \sim & \mathcal{N}(\mu_{v_x}, \Sigma_{v_x}), \\
+  v_y \vert \synchspace \sim & \mathcal{N}(\mu_{v_y}, \Sigma_{v_y}).
   \end{split}
 \end{equation}
 
 Finding a projection for an observation $\newobs$ onto trajectory
 $\traj_{k}$ can now be seen as finding how far along the trajectory $\newobs$
 would have traveled. More precisely, finding the $\synchspace$ that $\newobs$
-corresponds to. This $\synchspace$ can then be taken through $\modelf$
+corresponds to. This $\synchspace$ can then be taken through $\modelf_{k}$
 to get the projection. Finding $\synchspace$ is done by a multivariate
 GP which models $\synchspace = \synchf_{k}(\newobs)$, mapping $\newobs$ onto the
 progress relative to $\traj_{k}$. This assumes that $\synchspace$ is Normally
 distributed and that $\synchf_{k}$ is smooth, and gives
 \begin{equation}
   \label{eq:g-posterior}
-  \synchspace \sim \mathcal{N}(\mu_{\synchspace}, \Sigma_{\synchspace}).
+  \synchspace \vert \newobs \sim \mathcal{N}(\mu_{\synchspace}, \Sigma_{\synchspace}).
 \end{equation}
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.5]{synch-model}
-  \caption{An illustration of the mappings involved when synchronising
-    trajectories. Trajectories are observed in the \textit{state space} $\statespace =
-(p_x, p_y, v_x, v_y)$, containing position and velocity. Then projected by $p$ onto the
-    subspace $\posspace = (p_x, p_y)$. Then onto
-    $\synchspace$ by $\synchf_{k}$, and finally back onto $\statespace$ by
-    $\modelf_{k}$.}\label{fig:synch-model}
-\end{figure} 
+% \begin{figure}
+%   \centering
+%   \includegraphics[scale=1.5]{synch-model}
+%   \caption{An illustration of the mappings involved when synchronising
+%     trajectories. Trajectories are observed in the \textit{state space} $\statespace =
+% (p_x, p_y, v_x, v_y)$, containing position and velocity. Then projected by $p$ onto the
+%     subspace $\posspace = (p_x, p_y)$. Then onto
+%     $\synchspace$ by $\synchf_{k}$, and finally back onto $\statespace$ by
+%     $\modelf_{k}$.}\label{fig:synch-model}
+% \end{figure} 
 When considering progress along a segment, the current velocity does not matter. 
 Hence, the domain of $\synchf_{k}$ is the subspace 
 $\posspace = (p_x, p_y)$ of $\statespace$, and
@@ -91,7 +85,7 @@ consequently $\statespace$ is collapsed into $\posspace$ before
 mapping onto $\synchspace$. 
 The projection onto $\traj_{k}$ is
 finally given by the composition $\stochobs_{k} = (\modelf_{k} \circ
-\synchf_{k})(\obs)$, illustrated in Figure~\ref{fig:synch-model}.
+\synchf_{k})(\obs)$, illustrated in Figure~\ref{fig:trajectory-model}.
 This serves as a basis for a similarity metric between trajectories.
 For instance, a local similarity metric can be defined as the Euclidian
 distance $||E[\stochobs_{k}] - \newobs||_{2}$ which can be summed up
@@ -120,11 +114,55 @@ where $\prob(\stochobs_{k} = \newobs \vert \synchspace_{k},
 and~\ref{eq:gp-covariance-function} for the GPs modeling
 $\modelf_{k}$ and $\synchf_{k}$ respectively. 
 
-When trajectories are seen from the same
-$\synchspace$ (that is, they have been mapped over the same $\synchf$),
-through their models $\modelf$, they are
-synchronised. Hence the tuple $\synchmodel_{k} = (\modelf_{k},
-\synchf_{k})$ is referred to as the \textit{synchronisation model}.
+The final piece is to make arrival time predictions. Predicting the
+arrival time to the next stop can be seen as 
+learning the remaining time of a segment given a certain position $(p_x, p_y)$ 
+(as long as the current time is known). However, modeling it
+as simple as as function of $(p_x, p_y)$ directly would assume that 
+every trajectory passes the \textit{exact} same positions. A better model is $\arrtime_{k}
+= \predf_{k}(\synchspace)$, for arrival time $\arrtime_{k}$, 
+which instead depends on progression. Since the
+progression represents similar trajectories and not a single one, this
+model generalises much better. Assuming that $\arrtime_{k} \sim
+\mathcal{N}(\mu_{\arrtime_{k}}, \Sigma_{\arrtime_{k}})$, a GP can model
+$\predf_{k}$, which gives
+\begin{equation}
+  \label{eq:arrival-time-probability}
+  \prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k) 
+  = \int \prob(\arrtime_{k} \vert \synchspace_{k},
+  \model_{k}) \prob(\synchspace_{k} \vert \stochobs_{obs} 
+  = \newobs, \model_{k}) d\synchspace,
+\end{equation}
+where $\prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k)$
+and $\prob(\synchspace_{k} \vert \stochobs_{obs} = \newobs,
+\synchmodel_{k})$ are given by equations~\ref{eq:gp},~\ref{eq:gp-mean-function},
+and~\ref{eq:gp-covariance-function} for the GPs modeling
+$\predf_{k}$ and $\synchf_{k}$ respectively. 
+The final trajectory model is given by the triple $\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
+
+%extending the synchronisation model to the \textit{trajectory model}
+%$\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
+\begin{figure}
+  \centering
+  \includegraphics[scale=1.5]{trajectory-model}
+  \caption{An illustration of the trajectory model, which models
+    current state $\statespace$ and time left $\arrtime$ as functions of
+    progress $\synchspace$. New trajectories are observed in 
+    $\statespace = (p_x, p_y, v_x, v_y)$, containing position and velocity. 
+    These are projected by $p$ onto the subspace $\posspace = (p_x,
+    p_y)$, then onto $\synchspace$ by $\synchf_{k}$. From here the
+    projection onto a trajectory is given by $\modelf_{k}$, which is
+    used to compute the data likelihood, which in turn is used to
+    weight arrival time predictions made through $\predf_{k}$.}\label{fig:trajectory-model}
+\end{figure}
+
+%An illustration of the mappings involved when synchronising
+%    trajectories. 
+% When trajectories are seen from the same
+% $\synchspace$ (that is, they have been mapped over the same $\synchf$),
+% through their models $\modelf$, they are
+% synchronised. Hence the tuple $\synchmodel_{k} = (\modelf_{k},
+% \synchf_{k})$ is referred to as the \textit{synchronisation model}.
 
 % taking the exponent of the data log likelihood
 % \begin{equation}
@@ -169,10 +207,10 @@ synchronised. Hence the tuple $\synchmodel_{k} = (\modelf_{k},
 %   \vert \newobs) = P(\synchedobs = \newobs \vert \synchmodel_{k})
 % \end{equation}
 
-%Having a distribution over models will also prove useful when making arrival time predictions. 
-\subsection{Learning the Synchronisation Model}
-Learning a synchronisation model $\synchmodel_{k}$ means learning
-$\modelf_{k}$ and $\synchf_{k}$ by MAP-estimation. However, there are
+%Having a distribution over models will also prove useful when making arrival time predictions.
+\section{Training the Model}
+Training a model $\model_{k}$ is done by learning
+$\modelf_{k}$, $\synchf_{k}$ and $\predf_{k}$ by MAP-estimation. However, there are
 more constraints on the functions than can be formulated in
 priors. In particular, a critical property of $\synchf_{k}$
 is that it should be monotonically increasing in the direction of progression,
@@ -193,8 +231,7 @@ learning of the kernel lengthscale parameters to small values. To
 make data approximately uniformly distributed spatially instead and 
 avoid this problem, a technique called \textit{stop compression} is used.
 
-\subsubsection{Data Augmentation}
-\label{sec:data-augmentation}
+\subsubsection{Data Augmentation}\label{sec:data-augmentation}
 For reasons previously described, $\synchf_{k}$ should be monotonically increasing in
 the direction of progression and stationary orthogonal to it.
 To enforce learning such a function, synthetic data is generated by
@@ -219,8 +256,7 @@ Figure~\ref{fig:traj-with-support-data}.
   \end{minipage}
 \end{figure}
 
-\subsubsection{Stop Compression}
-\label{sec:stop-compression}
+\subsubsection{Stop Compression}\label{sec:stop-compression}
 Stop compression aggregates observations in close proximity into a
 single observation through averaging. Observations within a radius of
 $\epsilon$m are clustered into a single observation with the mean value of
@@ -242,44 +278,14 @@ Figure~\ref{fig:stop-compression-before} and Figure~\ref{fig:stop-compression-af
   \end{minipage}
 \end{figure}
 
-\subsection{Prediction Model}
-Predicting arrival time can be seen as learning the remaining time of
-a segment given a certain position $(p_x, p_y)$. However, modeling it
-as simple as as function of $(p_x, p_y)$ directly would assume that 
-every trajectory passes the exact same positions. A better model is $\arrtime_{k}
-= \predf_{k}(\synchspace)$, for arrival time $\arrtime_{k}$, 
-which instead depends on progression. Since the
-progression represents similar trajectories and not a single one, this
-model generalises much better. Assuming that $\arrtime_{k} \sim
-\mathcal{N}(\mu_{\arrtime_{k}}, \Sigma_{\arrtime_{k}})$, a GP can model
-$\predf_{k}$, which gives
-\begin{equation}
-  \label{eq:arrival-time-probability}
-  \prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k) 
-  = \int \prob(\arrtime_{k} \vert \synchspace_{k},
-  \model_{k}) \prob(\synchspace_{k} \vert \stochobs_{obs} 
-  = \newobs, \model_{k}) d\synchspace,
-\end{equation}
-where $\prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k)$ 
-and $\prob(\synchspace_{k} \vert \stochobs_{obs} = \newobs,
-\synchmodel_{k})$ are given by equations~\ref{eq:gp},~\ref{eq:gp-mean-function},
-and~\ref{eq:gp-covariance-function} for the GPs modeling
-$\predf_{k}$ and $\synchf_{k}$ respectively.
+\section{Querying the model}
+There are two queries that can be asked of the model. The first one is
+arrival time prediction and the second is event detection. This
+section addresses how both these queries are performed.
 
-%extending the synchronisation model to the \textit{trajectory model}
-%$\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.5]{trajectory-model}
-  \caption{An illustration of the trajectory model, which models
-    current state $\statespace$ and time left $\arrtime$ as functions of
-    progress $\synchspace$. $P$ denotes orthogonal projection from $\statespace
-    = (p_x, p_y, v_x, v_y)$, to $\posspace = (p_x, p_y)$.}\label{fig:trajectory-model}
-\end{figure}
-
-\section{Arrival Time Prediction}
+\subsection{Arrival Time Prediction}
 The arrival time predictions are modeled as a Mixture of Gaussian
-Processes (MoGP), where each motion pattern model $\model_{k}$ induce a component. The
+Processes (MoGP), where each previously observed model $\model_{k}$ induce a component. The
 model predicts remaining time until arrival $\arrtime$ through the mixture
 \begin{equation}
   \label{eq:arrival-time-probability}
@@ -317,7 +323,119 @@ actual arrival time prediction of the model is the largest mode.
 \subsection{Event Detection}
 The problem of detecting events have not yet been investigated.
 
-\section{System Implementation}
-This section describes the actual implementation of the system, and
-what simplifications and approximations that are made to evaluate it efficiently.
+\section{System Simplifications and Approximations}
+Due to computational reasons, several simplifications and
+approximations are made to evaluate the models efficiently.
 
+\subsection{Approximating the mapping onto $\synchspace$}
+The integrals in
+equations~\ref{eq:arrival-time-probability} and
+~\ref{eq:model-likelihood} have no closed form solutions, since the probability
+$\prob(\synchspace_{k} \vert \stochobs_{k}, \model_{k})$ is
+non-Gaussian. Although they can be approximated by using sampling algorithms,
+those are computationally expensive and take long time to evaluate. To
+avoid this, the likelihood is approximated as
+$\delta_{\mu_{\synchspace}}$, that is, a Dirac delta function at the
+mean prediction. Intuitively, this approximation discards the variance
+of the distribution, treating it as a deterministic value. 
+This simplifies equation~\ref{eq:arrival-time-probability} to 
+\begin{equation}
+  \begin{split}
+    \prob(\stochobs_{k} = \newobs \vert \stochobs_{obs} = \newobs,
+    \synchmodel_{k}) = &
+    \int \prob(\stochobs_{k} = \newobs \vert \synchspace_{k}, \synchmodel_{k}) 
+    \prob(\synchspace_{k} \vert \stochobs_{obs} = \newobs,
+    \synchmodel_{k}) d\synchspace \\
+    & \int \prob(\stochobs_{k} = \newobs \vert \synchspace_{k}, \synchmodel_{k}) 
+    \delta_{\mu_{\synchspace}} d\synchspace \\
+    &\int \prob(\stochobs_{k} = \newobs \vert \synchspace_{k}, \synchmodel_{k}) d\synchspace
+    \times \int \delta_{\mu_{\synchspace}} d\synchspace = \\
+    &\int \prob(\stochobs_{k} = \newobs \vert \synchspace_{k},
+    \synchmodel_{k}) d\synchspace \times 1 = \\
+    &\int \prob(\stochobs_{k} = \newobs \vert \synchspace_{k},
+    \synchmodel_{k}) d\synchspace,
+  \end{split}
+\end{equation}
+through the linearity of the integral operator and the property
+\begin{equation}
+  \label{eq:dirac-integral}
+  \int_{-\infty}^{\infty} \delta_{\mu_{\synchspace}} = 1,
+\end{equation}
+of the Dirac delta function. The resulting integral is Gaussian
+and has a closed form solution, so it can be computed efficiently.
+
+\subsection{Artificial Noise Variance in Single Trajectory Motion Patterns}
+A motion pattern is a representation of a set of trajectory GPs
+$\modelf_1, \modelf_2, \dots, \modelf_N$. A motion pattern can
+be modeled as a GP as well, which captures the mean function of all
+underlying GPs, and their total variance. However, the implementation
+models one motion pattern for each trajectory, so the underlying set of 
+GPs is always a singleton ${\modelf_k}$. In addition, $\modelf_k$
+contains almost no noise, so there is very small posterior variance.
+This results in a motion pattern with equally small posterior
+variance, and a likelihood for new observations which is close to zero
+for almost all trajectories, even those that are similar. This makes
+the likelihood meaningless as a similarity metric. To prevent this, a
+greater uncertainty is artificially created, by fixing the noise variance
+parameter of the models to a higher value than would if it
+would have been estimated from data. This is illustrated in
+Figure~\ref{fig:too-small-variance} and Figure~\ref{fig:ok-variance}.
+
+\begin{figure}[H]
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[width=\textwidth]{figures/too-low-variance}
+    \caption{GP posterior for for x and y coordinates, together with newly
+      observed data. The posterior variance is close to zero, so all
+      new data lies outside the 95\% credible interval and the
+      likelihood is very small. }\label{fig:too-small-variance}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[width=\textwidth]{figures/ok-variance}
+    \caption{GP posterior for for x and y coordinates, together with newly
+      observed data. The posterior variance has been artificially increased, so the
+      new data is mainly inside the 95\% credible interval and
+      consequently is more likely.}\label{fig:ok-variance}
+  \end{minipage}
+\end{figure}
+
+\section{System Implementation}
+This section describes the implementation details of the system and
+how data was processed. The implementation was done in Python, using the GPy
+framework~\cite{gpy2014} for GP computations and the data base
+PostgreSQL~\cite{BibEntry2019Feb} for storing trained GPs.
+
+% \subsection{Prediction Model}
+% Predicting arrival time can be seen as learning the remaining time of
+% a segment given a certain position $(p_x, p_y)$. However, modeling it
+% as simple as as function of $(p_x, p_y)$ directly would assume that 
+% every trajectory passes the exact same positions. A better model is $\arrtime_{k}
+% = \predf_{k}(\synchspace)$, for arrival time $\arrtime_{k}$, 
+% which instead depends on progression. Since the
+% progression represents similar trajectories and not a single one, this
+% model generalises much better. Assuming that $\arrtime_{k} \sim
+% \mathcal{N}(\mu_{\arrtime_{k}}, \Sigma_{\arrtime_{k}})$, a GP can model
+% $\predf_{k}$, which gives
+% \begin{equation}
+%   \label{eq:arrival-time-probability}
+%   \prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k) 
+%   = \int \prob(\arrtime_{k} \vert \synchspace_{k},
+%   \model_{k}) \prob(\synchspace_{k} \vert \stochobs_{obs} 
+%   = \newobs, \model_{k}) d\synchspace,
+% \end{equation}
+% where $\prob(\arrtime_{k} \vert \stochobs_{obs} = \newobs, \model_k)$ 
+% and $\prob(\synchspace_{k} \vert \stochobs_{obs} = \newobs,
+% \synchmodel_{k})$ are given by equations~\ref{eq:gp},~\ref{eq:gp-mean-function},
+% and~\ref{eq:gp-covariance-function} for the GPs modeling
+% $\predf_{k}$ and $\synchf_{k}$ respectively.
+
+% %extending the synchronisation model to the \textit{trajectory model}
+% %$\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
+% \begin{figure}
+%   \centering
+%   \includegraphics[scale=1.5]{trajectory-model}
+%   \caption{An illustration of the trajectory model, which models
+%     current state $\statespace$ and time left $\arrtime$ as functions of
+%     progress $\synchspace$. $P$ denotes orthogonal projection from $\statespace
+%     = (p_x, p_y, v_x, v_y)$, to $\posspace = (p_x, p_y)$.}\label{fig:trajectory-model}
+% \end{figure}
