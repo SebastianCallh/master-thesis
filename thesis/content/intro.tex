@@ -82,72 +82,71 @@ could be made.
 % detecting common characteristics, anlaysis of patterns that produce
 % erroneous predictions and outlier detection.
 
-\section{Problem Description}
-This section addresses the problems that need to be solved to create a
-system that both learns motion patterns and makes arrival
-time predictions that quantifies uncertainty. It also proposes
-solutions to these problems. An illustration of the data flow of the
-system can be seen in Figure~\ref{fig:system-subproblems}.
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\textwidth]{figures/system-subproblems}
-  \caption{An illustration of the data flow in a system that can make
-    arrival time predictions and detect events in motion patterns.}\label{fig:system-subproblems}
-\end{figure}
+% \section{Problem Description}
+% This section addresses the problems that need to be solved to create a
+% system that both learns motion patterns and makes arrival
+% time predictions that quantifies uncertainty. It also proposes
+% solutions to these problems. An illustration of the data flow of the
+% system can be seen in Figure~\ref{fig:system-subproblems}.
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=0.7\textwidth]{figures/system-subproblems}
+%   \caption{An illustration of the data flow in a system that can make
+%     arrival time predictions and detect events in motion patterns.}\label{fig:system-subproblems}
+% \end{figure}
 
-\subsection{Trajectory Comparison}
-The first step in the system requires a way of comparing
-trajectories, which is not straight-forward. The reason for this is that trajectories
-can have different lengths and unevenly spaced observations.
-The proposed way of doing this is by \textit{synchronising} them,
-by modeling the trajectories spatial position as two independent
-Gaussian processes (GPs) \(f_x(\tau) \mapsto
-x\), \(f_y(\tau) \mapsto y\) for $\tau = [0,1]$, and learning an
-inverse GP \(f(x, y) \mapsto \tau\). A similarity
-metric for model \(M_k\) is then given by the likelihood \(P(u, v | M_k)\), where
-$u$ and $v$ are given by the function compositions \(u = (f_{y} \circ g)(x, y)\),
-\(v = (f_{x} \circ g)(x, y)\).
+% \subsection{Trajectory Comparison}
+% The first step in the system requires a way of comparing
+% trajectories, which is not straight-forward. The reason for this is that trajectories
+% can have different lengths and unevenly spaced observations.
+% The proposed way of doing this is by \textit{synchronising} them,
+% by modeling the trajectories spatial position as two independent
+% Gaussian processes (GPs) \(f_x(\tau) \mapsto
+% x\), \(f_y(\tau) \mapsto y\) for $\tau = [0,1]$, and learning an
+% inverse GP \(f(x, y) \mapsto \tau\). A similarity
+% metric for model \(M_k\) is then given by the likelihood \(P(u, v | M_k)\), where
+% $u$ and $v$ are given by the function compositions \(u = (f_{y} \circ g)(x, y)\),
+% \(v = (f_{x} \circ g)(x, y)\).
 
-%and then using the likelihood of GP models as a
-%similarity metric. The synchronisation step can also be done by GPs,
-%so in total the functions $(x, y) \mapsto \tau \mapsto
-%x, y$ would be modeled for $\tau = [0,1]$.
+% %and then using the likelihood of GP models as a
+% %similarity metric. The synchronisation step can also be done by GPs,
+% %so in total the functions $(x, y) \mapsto \tau \mapsto
+% %x, y$ would be modeled for $\tau = [0,1]$.
 
-\subsection{TrajectoryClustering}
-Given a similarity metric, trajectories can be
-clustered. Agglomerative clustering is proposed for this task.
-One difficult question with clustering is what value of similarity to consider
-as ``close''. A lot of manual experiments would be needed to
-answer this, which could be very time consuming. Fortunately, the thesis
-project can proceed without properly solving this task, as clusters
-with a single trajectory can be considered.
+% \subsection{TrajectoryClustering}
+% Given a similarity metric, trajectories can be
+% clustered. Agglomerative clustering is proposed for this task.
+% One difficult question with clustering is what value of similarity to consider
+% as ``close''. A lot of manual experiments would be needed to
+% answer this, which could be very time consuming. Fortunately, the thesis
+% project can proceed without properly solving this task, as clusters
+% with a single trajectory can be considered.
 
-\subsection{Motion Pattern Learning}
-The challenge after clustering is to find a motion
-pattern model $M_k$ that represents trajectories of cluster $k$ well. 
-This can be done by fitting a GP
-that maximises the likelihood of the cluster data, but also in several
-other more sophisticated ways, should time permit. For the case of a single trajectory in
-a cluster, this problem is reduced to ordinary Gaussian
-process regression (GPR).
+% \subsection{Motion Pattern Learning}
+% The challenge after clustering is to find a motion
+% pattern model $M_k$ that represents trajectories of cluster $k$ well. 
+% This can be done by fitting a GP
+% that maximises the likelihood of the cluster data, but also in several
+% other more sophisticated ways, should time permit. For the case of a single trajectory in
+% a cluster, this problem is reduced to ordinary Gaussian
+% process regression (GPR).
 
-\subsection{Arrival Time Prediction}
-Once motion patterns have been learned, arrival time $t$ can be predicted
-by modeling $P(t | x, y, M_k)$ for observed position $(x, y)$. The proposed solution to this is one GPR
-model per motion pattern, combined in a mixture to form the final
-predictive distribution
-\[P(t | x, y) = \sum_{k} P(t | x, y, M_k)P(M_k | x, y).\]
+% \subsection{Arrival Time Prediction}
+% Once motion patterns have been learned, arrival time $t$ can be predicted
+% by modeling $P(t | x, y, M_k)$ for observed position $(x, y)$. The proposed solution to this is one GPR
+% model per motion pattern, combined in a mixture to form the final
+% predictive distribution
+% \[P(t | x, y) = \sum_{k} P(t | x, y, M_k)P(M_k | x, y).\]
 
-\subsection{Event Detection}
-The final problem is automatically extracting events from motion
-patterns. This can be done by asserting a GP for the motion pattern,
-and searching over different kernel structures to maximise marginal
-likelihood. By searching over kernels which carry a specific meaning (in this case
-kernels would correspond to specific events), it is possible to
-detect events based on the kernel composition~\cite{duvenaud2013structure}.
+% \subsection{Event Detection}
+% The final problem is automatically extracting events from motion
+% patterns. This can be done by asserting a GP for the motion pattern,
+% and searching over different kernel structures to maximise marginal
+% likelihood. By searching over kernels which carry a specific meaning (in this case
+% kernels would correspond to specific events), it is possible to
+% detect events based on the kernel composition~\cite{duvenaud2013structure}.
 
-\section{Aim}
-\label{sec:aim}
+\section{Aim}\label{sec:aim}
 The aim of this thesis project is to model motion patterns of public
 transport vehicles using Gaussian Processes, and use these
 models to make arrival time predictions with an accuracy that is
@@ -160,15 +159,14 @@ too late, compared to publicly available time schedules. Finally, this
 project aims to investigate how outlier motion patterns can be
 detected.
 
-\section{Research questions}
-\label{sec:research-questions}
+\section{Research questions}\label{sec:research-questions}
 
 \begin{enumerate}
 \item How can Gaussian processes be used to capture trajectory motion
   patterns, such that arrival time predictions based on these patterns minimise MAE?
 
 \item How can similar trajectories be clustered into motion patterns, 
-  such that arrival time predictions based on these patterns minimise MAE? 
+  such that arrival time predictions based on these patterns minimise MAE?
   
 \item How can specific events be automatically detected in a
   motion pattern using compositional kernel search?
@@ -196,8 +194,7 @@ detected.
 %question is sufficiently specific and well-grounded in related
 %research.
 
-\section{Delimitations}
-\label{sec:delimitations}
+\section{Delimitations}\label{sec:delimitations}
 The domain of the thesis project is specifically buses in
 Linköping. Data on trains is available, but making the system
 work for trains is out of the scope. The thesis project is limited further
