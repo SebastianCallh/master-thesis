@@ -1,10 +1,10 @@
 
 \chapter{Background}
 This chapter describes theoretic results that this thesis is based
-on. It covers trajectory data, supervised machine learning from a
+on. It covers trajectory data, motion pattern learning, supervised machine learning from a
 Bayesian perspective, GPs, and arrival time prediction using machine learning.
 
-\section{Trajectory Data}
+\section{Trajectory Data}\label{sec:trajectory-data}
 A \textit{trajectory} $\traj_{k}$ of can be seen as an ordered collection of
 observations $(\obs^{(k)}_1, \obs^{(k)}_2, \dots, \obs^{(k)}_N)$.
 The thesis project focuses on \textit{spatio-temporal}
@@ -30,9 +30,18 @@ An illustration of trajectories with different length can be seen in Figure~\ref
     measuring the distance between them.}\label{fig:trajectory-projection-problems}
 \end{figure}
 
+Even trajectories generated from the same underlying process do not in general
+have the same length and duration, even though they are typically more
+similar. For instance, a bus driving the same route several times
+would not produce trajectories with identical duration and length. 
+If two trajectories from the same underlying
+process have the same amount of observations at the same time points,
+they are said to be \textit{synchronised}. 
+Otherwise they are said to be\textit{unsynchronised}.
+
 \section{Supervised Machine Learning}
 Supervised machine learning is the process of training computers programs to
-recognise patterns in data~\ref{Bishop-2006}. It is incredibly
+recognise patterns in data~\cite{Bishop-2006}. It is incredibly
 flexible, and can find patterns such as ``What
 temperature is expected for this time of year on this geographical
 position?'' or ``What subject is this text about?''. Finding the first
@@ -144,7 +153,7 @@ problem of over-fitting entirely. This is done by maximising the
 \begin{equation}
   \label{eq:marginal-likelihod}
   \prob(\obs \vert \model) = \int \prob(\obs \vert \hyperparam,
-  \model) \prob(\hyperparam \vert \model) \prop(\hyperparam) d\hyperparam
+  \model) \prob(\hyperparam \vert \model) \prob(\hyperparam) d\hyperparam
 \end{equation}
 which considers both the uncertainty in $\obs$ and
 $\hyperparam$. However, the marginal likelihood is very sensitive to
@@ -225,6 +234,55 @@ and easy-to-understand quantity~\cite{willmott2005advantages}.
 %% magnitude. One issue with it is that it is only defined for $\hat{t}
 %% \ne 0$. 
 %% These metrics are complementary
+
+\section{Data Clustering}
+There are cases where no labels $y$ exist, and the
+task is to learn the structure of the data. These types of problem
+fall under \textit{unsupervised learning} (as opposed to supervised
+learning when $y$ is known), and one common problem of this type is
+\textit{clustering}~\cite{Bishop-2006}. The goal of clustering is to
+identify groups of observations that are in some sense similar. These
+groups are known as clusters, and can be created in many ways. Intuitively,
+observations that are ``close'' with respect to some distance metric
+can be considered similar, and should be clustered together. However,
+without a distance metric there is not way to measure closeness and consequently
+no way of clustering. The concept of clustering is illustrated in
+Figure~\ref{fig:clusters-unassigned} and Figure~\ref{fig:clusters-assigned}.
+\begin{figure}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.48,width=\textwidth]{figures/clusters-unassigned}
+    \caption{Observations without labels. The goal is to place
+      similar data points into the same clusters.}\label{fig:clusters-unassigned}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.5,width=\textwidth]{figures/clusters-assigned}
+    \caption{The observations have been clustered based on distance
+      into three distinct clusters.}\label{fig:clusters-assigned}
+  \end{minipage}
+\end{figure}
+
+\section{Motion Pattern Learning}
+Motion pattern learning is the problem of learning motion patterns from a
+set of trajectories, such that each pattern captures a different
+characteristic of the trajectories. An example with synthetic data can be
+seen in Figure~\ref{fig:motion-pattern-example}. The term
+\textit{trajectory learning} is often used in the literature for the
+same problem. However, in the
+context of this thesis the term ``trajectory'' refers to data with
+certain structure, as described in Section~\ref{sec:trajectory-data}, so 
+the name motion pattern learning will be used instead.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/motion-pattern-example}
+  \caption{Synthetic data showing two motion patterns with two trajectories in
+    each. Trajectory 2 and 3 belong to one motion pattern and
+    Trajectory 1 and 4 belong to a second motion pattern.}\label{fig:motion-pattern-example}
+\end{figure}
+Motion pattern learning has a natural interpretation as a
+clustering problem, but clustering trajectories is difficult,
+since it is hard to define a similarity metric for trajectories for
+reasons described in Section~\ref{sec:trajectory-data}.
 
 \section{Gaussian Processes}
 A GP generalises a multivariate normal distribution, and can be seen
