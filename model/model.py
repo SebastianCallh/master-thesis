@@ -1,3 +1,4 @@
+
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
@@ -7,7 +8,8 @@ h: tau        -> time
 In addition, this module contains an interface for saving and loading
 modules into a Postgres database.
 """
-from math import radians, cos, sin, asin, sqrt 
+from math import radians, cos, sin, asin, sqrt, atan2
+
 import json
 import pickle
 import psycopg2 as pg
@@ -82,9 +84,10 @@ def normalise(data: DataFrame) -> DataFrame:
 
 
 def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
-    x_scaled = func.x_scaler.transform(X)
-    y_scaled, var = func.model.predict(x_scaled)
-    return func.y_scaler.inverse_transform(y_scaled), var
+    #x_scaled = func.x_scaler.transform(X)
+    #y_scaled, var = func.model.predict(x_scaled)
+    return func.model.predict(X)
+    # return func.y_scaler.inverse_transform(y_scaled), var
 
 
 def plot_function(func: FunctionModel, ax=None) -> ():
@@ -113,23 +116,26 @@ def learn_function(
 
     x_scaler = StandardScaler()
     y_scaler = StandardScaler()
-    x_scaler.fit(x)
-    y_scaler.fit(y)
+    #x_scaler.fit(x)
+    #y_scaler.fit(y)
 
     model = GPRegression(
-        x_scaler.transform(x),
-        y_scaler.transform(y),
-        kernel)
+        x.values, #x_scaler.transform(x),
+        y.values, #y_scaler.transform(y),
+        kernel,
+        normalizer=False
+    )
 
-
-    if priors.kern_lengthscale:
-        model.kern.lengthscale.set_prior(priors.kern_lengthscale)
-    if priors.kern_variance:
-        model.kern.variance.set_prior(priors.kern_variance)
-    if priors.likelihood:
-        model.likelihood.set_prior(priors.likelihood)
+    if priors:
+        if priors.kern_lengthscale:
+            model.kern.lengthscale.set_prior(priors.kern_lengthscale)
+        if priors.kern_variance:
+            model.kern.variance.set_prior(priors.kern_variance)
+        if priors.likelihood:
+            model.likelihood.set_prior(priors.likelihood)
+            
     if fixed_likelihood:
-        model.likelihood.variance = fixed_likelihood
+        model.likelihood.variance = fixed_likelihood 
         model.likelihood.variance.fix()
 
     model.optimize_restarts(n_restarts, messages=verbose)
@@ -150,12 +156,13 @@ class TrajectoryModel(NamedTuple):
     """
     route: int
     segment: int
-    f: FunctionModel
+    f_p: FunctionModel
+    f_v: FunctionModel
     g: FunctionModel
     h: FunctionModel
 
 # def predict_arrival_time(model: TrajectoryModel, X: ndarray) -> ndarray:
-    
+
 
 def stop_compress(data: DataFrame, delta: float) -> DataFrame:
     """ Downsamples the data such that each consecutive data point have a least
@@ -163,22 +170,10 @@ def stop_compress(data: DataFrame, delta: float) -> DataFrame:
     result since the aggreageted mean will be strongly defined by tightly clustered data.
     """
 
-
-    def haversine(lon1, lat1, lon2, lat2):
-        """
-        Calculate the great circle distance between two points
-        on the earth (specified in decimal degrees)
-        """
-        # convert decimal degrees to radians
-        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-        
-        # haversine formula
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a))
-        r = 6371 # Radius of earth in kilometers
-        return c * r
+    def distance(x1, y1, x2, y2):
+        dx = abs(x1 - x2)
+        dy = abs(y1 - y2)
+        return sqrt(dx**2 + dy**2)
 
     def mean_timestamp(timestamps):
         return pd.to_datetime(timestamps.values.astype(np.int64).mean())
@@ -187,42 +182,46 @@ def stop_compress(data: DataFrame, delta: float) -> DataFrame:
         if data.shape[0] == 1:
             return data
         
-        data.speed = np.max(data.speed, 0) # data contains -1 sentinel values for missing speed
+        #data.speed = np.max(data.speed, 0) # data contains -1 sentinel values for missing speed
 
-        def contains_entered_event(df):
-            return df.event.transform(lambda e: e == 'EnteredEvent').any()
+        # def contains_entered_event(df):
+        #    return df.event.transform(lambda e: e == 'EnteredEvent').any()
         
-        special_treatment_fields = ['timestamp', 'event', 'seg', 'station', 'line', 'traj']
+        special_treatment_fields = ['timestamp', 'seg', 'traj']
         compressed_data = data.drop(special_treatment_fields, axis=1).apply(np.mean, axis=0)
-        
+
         # Since python is a shit language it will wrongly cast stuff
         # unless explicitly provided a pd.Timestamp first
         compressed_data['timestamp'] = pd.Timestamp(2017, 1, 1, 12)
         compressed_data.timestamp = mean_timestamp(data.timestamp)
-        compressed_data['event'] = \
-            'EnteredEvent' if contains_entered_event(data) \
-            else 'ObservedPositionEvent'
+        compressed_data['seg'] = data.seg.min()
+        compressed_data['traj'] = data.iloc[0].traj        
 
-        compressed_data['station'] = \
-            data[data.event == 'EnteredEvent'].station \
-        if contains_entered_event(data) else 'NaN'
+        #compressed_data['event'] = \
+        #    'EnteredEvent' if contains_entered_event(data) \
+        #    else 'ObservedPositionEvent'
+
+        #compressed_data['station'] = \
+        #    data[data.event == 'EnteredEvent'].station \
+        #if contains_entered_event(data) else 'NaN'
 
         # In the case of overlapping segments we let the data belong to the first
-        compressed_data['seg'] = data.seg.min()
-        compressed_data['line'] = data.iloc[0].line
-        compressed_data['traj'] = data.iloc[0].traj
+
+        #compressed_data['line'] = data.iloc[0].line
+
         return compressed_data
    
     output = pd.DataFrame(columns=data.columns)
     data_buffer: List[Series] = [data.iloc[0]]
     for _, current in data.iterrows():
-        distance = haversine(
-            current.lat, 
-            current.lon, 
-            np.mean([x.lat for x in data_buffer]),
-            np.mean([x.lon for x in data_buffer]))
+        dist = distance(
+            current.x,
+            current.y,
+            np.mean([x.x for x in data_buffer]),
+            np.mean([x.y for x in data_buffer])
+        )
    
-        if distance > delta:
+        if dist > delta:
             output = output.append(compress(pd.DataFrame(data_buffer)), ignore_index=True)
             data_buffer.clear()
         
@@ -234,26 +233,22 @@ def stop_compress(data: DataFrame, delta: float) -> DataFrame:
 
 def delta_vector(a, b):
     """Returns the vector from a->b."""
-    d_lat = b.lat - a.lat
-    d_lon = b.lon - a.lon
-    return np.array([d_lat, d_lon])
+    dx = b.x - a.x
+    dy = b.y - a.y
+    return np.array([dx, dy])
 
 
 def obs_vector(obs):
     """Returns the position vector of the provided observations."""
-    return np.array([obs.lat, obs.lon])
-
-
-def move_to(data, vec):
-    data.lat = vec[0]
-    data.lon = vec[1]
-    return data
+    return np.array([obs.x, obs.y])
 
 
 def create_support_data(
         data: DataFrame,
-        f: FunctionModel,
-        f_codomain: List[str],
+        f_p: FunctionModel,
+        f_v: FunctionModel,
+        f_p_codomain: List[str],
+        f_v_codomain: List[str],
         n_samples: int,
         delta: float,
         sigma: float) -> DataFrame:
@@ -266,26 +261,29 @@ def create_support_data(
         np.min(data.tau.max()),
         1/delta
     )
-    
+
+    tau = tau_grid.reshape(len(tau_grid), 1)
     acc = []
+    pos, _ = predict(f_p, tau)
+    vel, _ = predict(f_v, tau)
+    
     for n in range(len(tau_grid)-1):
-        cur_tau = np.array(tau_grid[n]).reshape(1, 1)
-        nxt_tau = np.array(tau_grid[n+1]).reshape(1, 1)
-        cur, _ = predict(f, cur_tau)
-        nxt, _ = predict(f, nxt_tau)
-        orth = orth_comp(nxt[0]-cur[0])
-        orth = orth / np.linalg.norm(orth)
-
-        samples = [
-            cur + orth * x
-            for x in np.random.normal(0, sigma, n_samples)
-        ]
-
+        cur_vel = vel[n]
+        cur_pos = pos[n]
+        nxt_pos = pos[n+1]
+        orth_delta = orth_comp(nxt_pos - cur_pos)
+        orth_delta = orth_delta / np.linalg.norm(orth_delta)
+        
         acc.extend([
-            {f_codomain[0]: x[0][0],
-             f_codomain[1]: x[0][1],
+            {f_p_codomain[0]: x[0],
+             f_p_codomain[1]: x[1],
+             f_v_codomain[0]: cur_vel[0],
+             f_v_codomain[1]: cur_vel[1],
              'tau': tau_grid[n]}
-            for x in samples
+            for x in [
+                cur_pos + orth_delta * x
+                for x in np.random.normal(0, sigma, n_samples)
+            ]
         ])
 
     return pd.DataFrame(acc)
@@ -299,26 +297,28 @@ def compute_tau(data: DataFrame) -> [float]:
 def learn_trajectory_model(
         data: DataFrame,
         route: int,
-        trajectory: int,
-        f_codomain: Domain,
+        segment: int,
+        f_p_codomain: Domain,
+        f_v_codomain: Domain,
         g_domain: Domain,
-        f_priors: FunctionModelPriors=None,
+        f_p_priors: FunctionModelPriors=None,
+        f_v_priors: FunctionModelPriors=None,
         g_priors: FunctionModelPriors=None,
         h_priors: FunctionModelPriors=None,
-        fix_f_likelihood: float=None,
+        fix_f_p_likelihood: float=None,
+        fix_f_v_likelihood: float=None,
         n_restarts=3,
-        stop_compress_delta=.0004,
         n_augment_samples=5,
         augment_sigma=.8,
         augment_delta=.1,
         verbose=True) -> TrajectoryModel:
 
     # Stop compress
-    compressed_data = stop_compress(data, stop_compress_delta)
+    #compressed_data = stop_compress(data, stop_compress_delta)
 
     # Create tau
-    sorted_data = compressed_data.sort_values('timestamp')
-    sorted_data['tau'] = compute_tau(sorted_data)
+    #sorted_data = data.sort_values('timestamp')
+    #sorted_data['tau'] = compute_tau(sorted_data)
 
     # Compute time left
     #arrival_time = sorted_data.iloc[-1].timestamp
@@ -326,31 +326,51 @@ def learn_trajectory_model(
     #             for t in sorted_data.timestamp]
     #sorted_data['time_left'] = time_left
 
-    # Learn f
     f_domain = ['tau']
-    f_kernel = GPy.kern.RBF(
+
+    # Learn f_p
+    f_p_kernel = GPy.kern.RBF(
         input_dim=len(f_domain),
-        ARD=False
+        ARD=True
+    ) + GPy.kern.Linear(
+        input_dim=len(f_domain),
+        ARD=True
     )
-    f = learn_function(
-        sorted_data, f_domain,
-        f_codomain, f_kernel, 'f',
-        priors=f_priors,
+    f_p = learn_function(
+        data, f_domain,
+        f_p_codomain, f_p_kernel, 'f_p',
+        priors=f_p_priors,
         n_restarts=n_restarts,
-        fixed_likelihood=fix_f_likelihood,
+        fixed_likelihood=fix_f_p_likelihood,
+        verbose=verbose
+    )
+
+    # Learn f_v
+    f_v_kernel = GPy.kern.RBF(
+        input_dim=len(f_domain),
+        ARD=True
+    )
+    f_v = learn_function(
+        data, f_domain,
+        f_v_codomain, f_v_kernel, 'f_v',
+        priors=f_p_priors,
+        n_restarts=n_restarts,
+        fixed_likelihood=fix_f_v_likelihood,
         verbose=verbose
     )
 
     # Data augmentation for g
-    data0 = sorted_data.iloc[0]
-    v = obs_vector(data0)
-    u = delta_vector(data0, sorted_data.iloc[1])
+    #data0 = sorted_data.iloc[0]
+    #v = obs_vector(data0)
+    #u = delta_vector(data0, sorted_data.iloc[1])
     support_data = create_support_data(
-        sorted_data, f, f_codomain, n_augment_samples,
+        data, f_p, f_v, 
+        f_p_codomain, f_v_codomain,
+        n_augment_samples,
         augment_delta, augment_sigma
     )
     augmented_data = \
-        sorted_data[g_domain + f_domain] \
+        data[g_domain + f_domain] \
         .append(support_data)
 
     # Learn g
@@ -380,14 +400,14 @@ def learn_trajectory_model(
     )
 
     h = learn_function(
-        sorted_data, h_domain,
+        data, h_domain,
         ['time_left'], h_kernel, 'h',
         priors=h_priors,
         n_restarts=n_restarts,
         verbose=verbose)
 
     return TrajectoryModel(
-        route, trajectory, f, g, h
+        route, segment, f_p, f_v, g, h
     )
 
 
@@ -400,20 +420,22 @@ def acquire_db_conn():
 
 
 def save_model(model: TrajectoryModel, conn) -> int:
-    f_id = save_function(model.f, conn)
+    f_p_id = save_function(model.f_p, conn)
+    f_v_id = save_function(model.f_v, conn)
     g_id = save_function(model.g, conn)
     h_id = save_function(model.h, conn)
 
     with conn.cursor() as cur:
         cur.execute(
             '''
-            INSERT INTO model (route, segment, fid, gid, hid)
-            VALUES (%(route)s, %(segment)s, %(fid)s, %(gid)s, %(hid)s)
+            INSERT INTO model (route, segment, fpid, fvid, gid, hid)
+            VALUES (%(route)s, %(segment)s, %(fpid)s, %(fvid)s, %(gid)s, %(hid)s)
             RETURNING id
             ''', {
                 'route': model.route,
                 'segment': model.segment,
-                'fid': f_id,
+                'fpid': f_p_id,
+                'fvid': f_v_id,
                 'gid': g_id,
                 'hid': h_id
             })
@@ -424,11 +446,12 @@ def save_model(model: TrajectoryModel, conn) -> int:
 
 
 def model_from_db(res, conn):
-    f = load_function(res['fid'], conn)
+    f_p = load_function(res['fpid'], conn)
+    f_v = load_function(res['fvid'], conn)
     g = load_function(res['gid'], conn)
     h = load_function(res['hid'], conn)
     return TrajectoryModel(
-        res['route'], res['segment'], f, g, h
+        res['route'], res['segment'], f_p, f_v, g, h
     )
 
 
@@ -436,7 +459,7 @@ def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute(
             '''
-            SELECT route, segment, fid, gid, hid
+            SELECT route, segment, fpid, fvid, gid, hid
             FROM model
             WHERE route = %s
             AND segment = %s;
@@ -488,3 +511,19 @@ def load_function(func_id: int, conn) -> GP:
     return FunctionModel(
         f_type, model, x_scaler, y_scaler
     )
+
+# def haversine(lon1, lat1, lon2, lat2):
+#     """
+#     Calculate the great circle distance between two points
+#     on the earth (specified in decimal degrees)
+#     """
+#     # convert decimal degrees to radians
+#     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    
+#     # haversine formula
+#     dlon = lon2 - lon1
+#     dlat = lat2 - lat1
+#     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+#     c = 2 * asin(sqrt(a))
+#     r = 6371 # Radius of earth in kilometers
+#     return c * r
