@@ -1,4 +1,5 @@
 
+
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
@@ -22,7 +23,6 @@ from pandas import DataFrame, Series
 import GPy
 from GPy.models import GPRegression
 from GPy.kern.src.kern import Kern
-from sklearn.preprocessing import StandardScaler
 
 # DB CONSTANTS
 DB_NAME = 'msc'
@@ -41,7 +41,7 @@ Codomain = List[str]
 class FunctionModelPriors(NamedTuple):
     kern_lengthscale: GPy.priors.Gamma
     kern_variance: GPy.priors.Gamma
-    likelihood: GPy.priors.Gamma
+    likelihood_noise: GPy.priors.Gamma
 
 
 def gamma_prior(mean, var):
@@ -49,13 +49,8 @@ def gamma_prior(mean, var):
 
 
 class FunctionModel(NamedTuple):
-    """A GP model of a function, which is
-    scaled to have zero mean and unit variance.
-    """
     f_type: str
     model: GP
-    x_scaler: StandardScaler
-    y_scaler: StandardScaler
 
 
 def data_loglik(
@@ -84,10 +79,8 @@ def normalise(data: DataFrame) -> DataFrame:
 
 
 def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
-    #x_scaled = func.x_scaler.transform(X)
-    #y_scaled, var = func.model.predict(x_scaled)
     return func.model.predict(X)
-    # return func.y_scaler.inverse_transform(y_scaled), var
+
 
 
 def plot_function(func: FunctionModel, ax=None) -> ():
@@ -114,14 +107,9 @@ def learn_function(
     x = data[domain]
     y = data[codomain]
 
-    x_scaler = StandardScaler()
-    y_scaler = StandardScaler()
-    #x_scaler.fit(x)
-    #y_scaler.fit(y)
-
     model = GPRegression(
-        x.values, #x_scaler.transform(x),
-        y.values, #y_scaler.transform(y),
+        x.values,
+        y.values,
         kernel,
         normalizer=False
     )
@@ -140,7 +128,7 @@ def learn_function(
 
     model.optimize_restarts(n_restarts, messages=verbose)
     return FunctionModel(
-        f_type, model, x_scaler, y_scaler
+        f_type, model
     )
 
 
@@ -156,8 +144,10 @@ class TrajectoryModel(NamedTuple):
     """
     route: int
     segment: int
-    f_p: FunctionModel
-    f_v: FunctionModel
+    f_p_x: FunctionModel
+    f_p_y: FunctionModel
+    f_v_x: FunctionModel
+    f_v_y: FunctionModel
     g: FunctionModel
     h: FunctionModel
 
@@ -382,6 +372,20 @@ def learn_trajectory_model(
         ARD=False
     )
 
+    g_model = GPRegression(
+        augmented_data[g_domain],
+        augmented_data[f_domain],
+        g_kernel,
+        normalizer=False
+    )
+    g_model.kern.lengthscale.set_prior(g_priors.kern_lengthscale)
+    g_model.kern.variance.set_prior(g_priors.kern_variance)
+    g_model.likelihood.set_prior(g_priors.likelihood)
+    model.optimize_restarts(n_restarts, messages=verbose)
+    return FunctionModel(
+        f_type, model
+    )
+
     g = learn_function(
         augmented_data, g_domain,
         f_domain, g_kernel, 'g',
@@ -420,22 +424,26 @@ def acquire_db_conn():
 
 
 def save_model(model: TrajectoryModel, conn) -> int:
-    f_p_id = save_function(model.f_p, conn)
-    f_v_id = save_function(model.f_v, conn)
+    f_p_x_id = save_function(model.f_p_x, conn)
+    f_p_y_id = save_function(model.f_p_y, conn)
+    f_v_x_id = save_function(model.f_v_x, conn)
+    f_v_y_id = save_function(model.f_v_y, conn)
     g_id = save_function(model.g, conn)
     h_id = save_function(model.h, conn)
 
     with conn.cursor() as cur:
         cur.execute(
             '''
-            INSERT INTO model (route, segment, fpid, fvid, gid, hid)
-            VALUES (%(route)s, %(segment)s, %(fpid)s, %(fvid)s, %(gid)s, %(hid)s)
+            INSERT INTO model (route, segment, fpxid, fpyid, fvxid, fvyid, gid, hid)
+            VALUES (%(route)s, %(segment)s, %(fpxid)s, %(fpyid)s, %(fvxid)s, %(fvyid)s, %(gid)s, %(hid)s)
             RETURNING id
             ''', {
                 'route': model.route,
                 'segment': model.segment,
-                'fpid': f_p_id,
-                'fvid': f_v_id,
+                'fpxid': f_p_x_id,
+                'fpyid': f_p_y_id,
+                'fvxid': f_v_x_id,
+                'fvyid': f_v_y_id,
                 'gid': g_id,
                 'hid': h_id
             })
@@ -446,12 +454,17 @@ def save_model(model: TrajectoryModel, conn) -> int:
 
 
 def model_from_db(res, conn):
-    f_p = load_function(res['fpid'], conn)
-    f_v = load_function(res['fvid'], conn)
+    f_p_x = load_function(res['fpxid'], conn)
+    f_p_y = load_function(res['fpyid'], conn)
+    f_v_x = load_function(res['fvxid'], conn)
+    f_v_y = load_function(res['fvyid'], conn)
     g = load_function(res['gid'], conn)
     h = load_function(res['hid'], conn)
     return TrajectoryModel(
-        res['route'], res['segment'], f_p, f_v, g, h
+        res['route'], res['segment'], 
+        f_p_x, f_p_y, 
+        f_v_x, f_v_y, 
+        g, h
     )
 
 
@@ -459,7 +472,7 @@ def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute(
             '''
-            SELECT route, segment, fpid, fvid, gid, hid
+            SELECT route, segment, fpxid, fpyid, fvxid, fvyid, gid, hid
             FROM model
             WHERE route = %s
             AND segment = %s;
@@ -477,14 +490,12 @@ def save_function(func: FunctionModel, conn) -> int:
     with conn.cursor() as cur:
         cur.execute(
             '''
-            INSERT INTO function (type, model, featurescaler, targetscaler)
-            VALUES (%(type)s, %(model)s, %(x_scaler)s, %(y_scaler)s)
+            INSERT INTO function (type, model)
+            VALUES (%(type)s, %(model)s)
             RETURNING id
             ''', {
                 'type': func.f_type,
-                'model': json.dumps(func.model.to_dict()),
-                'x_scaler': pickle.dumps(func.x_scaler),
-                'y_scaler': pickle.dumps(func.y_scaler)
+                'model': json.dumps(func.model.to_dict())
             })
         func_id = cur.fetchone()[0]
         conn.commit()
@@ -498,7 +509,7 @@ def load_function(func_id: int, conn) -> GP:
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute(
             '''
-            SELECT type, model, featurescaler, targetscaler
+            SELECT type, model
             FROM function
             WHERE id = %s;
             ''', (func_id,))
@@ -506,24 +517,6 @@ def load_function(func_id: int, conn) -> GP:
 
     f_type = res['type']
     model = GPRegression.from_dict(dict(res['model']))
-    x_scaler = pickle.loads(res['featurescaler'])
-    y_scaler = pickle.loads(res['targetscaler'])
     return FunctionModel(
-        f_type, model, x_scaler, y_scaler
+        f_type, model
     )
-
-# def haversine(lon1, lat1, lon2, lat2):
-#     """
-#     Calculate the great circle distance between two points
-#     on the earth (specified in decimal degrees)
-#     """
-#     # convert decimal degrees to radians
-#     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-    
-#     # haversine formula
-#     dlon = lon2 - lon1
-#     dlat = lat2 - lat1
-#     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-#     c = 2 * asin(sqrt(a))
-#     r = 6371 # Radius of earth in kilometers
-#     return c * r
