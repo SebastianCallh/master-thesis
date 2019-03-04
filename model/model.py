@@ -1,5 +1,6 @@
 
 
+
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
