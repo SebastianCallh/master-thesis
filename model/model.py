@@ -1,6 +1,3 @@
-
-
-
 """This module defines the "inverse-Gaussian Process" trajectory model.
 
 The model consist of three Gaussian Processes (GPs).
@@ -37,7 +34,12 @@ Domain = List[str]
 Codomain = List[str]
 
 
+def reload_test(string: str):
+    print('hi, ho', string)
+
+
 # FUNCTION MODEL
+
 
 class FunctionModelPriors(NamedTuple):
     kern_lengthscale: GPy.priors.Gamma
@@ -77,11 +79,6 @@ def normalise(data: DataFrame) -> DataFrame:
         data[c] = data[c] - mean[c]
 
     return data
-
-
-def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
-    return func.model.predict(X)
-
 
 
 def plot_function(func: FunctionModel, ax=None) -> ():
@@ -137,12 +134,6 @@ def learn_function(
 
 
 class TrajectoryModel(NamedTuple):
-    """A model of a trajectory consisting of three GPs
-    modeling the functions
-    f : tau      -> state
-    g : position -> tau
-    h : tau      -> arrival time.
-    """
     route: int
     segment: int
     f_p_x: FunctionModel
