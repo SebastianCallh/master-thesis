@@ -19,8 +19,9 @@ from numpy import ndarray
 import pandas as pd
 from pandas import DataFrame, Series
 import GPy
-from GPy.models import GPRegression
+from GPy.models import GPRegression, SparseGPRegression
 from GPy.kern.src.kern import Kern
+from itertools import chain
 
 # DB CONSTANTS
 DB_NAME = 'msc'
@@ -29,7 +30,7 @@ DB_PW = 'gp_pw'
 
 
 # TYPE ALIAS
-GP = GPRegression
+GP = SparseGPRegression
 Domain = List[str]
 Codomain = List[str]
 
@@ -56,17 +57,17 @@ class FunctionModel(NamedTuple):
     model: GP
 
 
-def data_loglik(
-        model: FunctionModel, 
-        X: ndarray, 
-        Y: ndarray) -> float:
+# def data_loglik(
+#         model: FunctionModel,
+#         X: ndarray,
+#         Y: ndarray) -> float:
 
-    def loglik(x: ndarray, y: ndarray):
-        mu, sigma = predict(model, x.reshape(1, 1))
-        return -0.5*(y-mu)*np.linalg.inv(sigma)*(y-mu).T \
-                -0.5*np.log(np.abs(sigma))
+#     def loglik(x: ndarray, y: ndarray):
+#         mu, sigma = predict(model, x.reshape(1, 1))
+#         return -0.5*(y-mu)*np.linalg.inv(sigma)*(y-mu).T \
+#                 -0.5*np.log(np.abs(sigma))
 
-    return np.sum([loglik(x, y) for x, y in zip(X, Y)])
+#     return np.sum([loglik(x, y) for x, y in zip(X, Y)])
 
 
 def loglik(func: FunctionModel) -> float:
@@ -80,14 +81,6 @@ def normalise(data: DataFrame) -> DataFrame:
 
     return data
 
-
-def plot_function(func: FunctionModel, ax=None) -> ():
-    if ax:
-        func.model.plot(ax=ax)
-    else:
-        func.model.plot()
-
-
 def learn_function(
         data: DataFrame,
         domain: Domain,
@@ -97,21 +90,28 @@ def learn_function(
         priors: FunctionModelPriors=None,
         fixed_likelihood: int=None,
         n_restarts=3,
+        z=None,
         verbose=False) -> FunctionModel:
     """Fits a gp to a function from provided domain -> codomain.
     The data provided is assumed to have fields for both domain and codomain.
     """
+    print('z is here', z)
 
     x = data[domain]
     y = data[codomain]
-
-    model = GPRegression(
-        x.values,
-        y.values,
-        kernel,
-        normalizer=False
-    )
-
+    model = SparseGPRegression(
+            x.values,
+            y.values,
+            kernel,
+            normalizer=False,
+            z=z
+        ) if z else GPRegression(
+            x.values,
+            y.values,
+            kernel,
+            normalizer=False,
+        )
+        
     if priors:
         if priors.kern_lengthscale:
             model.kern.lengthscale.set_prior(priors.kern_lengthscale)
@@ -318,13 +318,16 @@ def learn_trajectory_model(
         input_dim=len(f_domain),
         ARD=True
     )
+    print('learning f!')
+    f_p_z = np.random(12, 1)
     f_p = learn_function(
         data, f_domain,
         f_p_codomain, f_p_kernel, 'f_p',
         priors=f_p_priors,
         n_restarts=n_restarts,
         fixed_likelihood=fix_f_p_likelihood,
-        verbose=verbose
+        verbose=verbose,
+        z=f_p_z
     )
 
     # Learn f_v
@@ -422,7 +425,6 @@ def save_model(model: TrajectoryModel, conn) -> int:
     f_v_y_id = save_function(model.f_v_y, conn)
     g_id = save_function(model.g, conn)
     h_id = save_function(model.h, conn)
-
     with conn.cursor() as cur:
         cur.execute(
             '''
@@ -430,8 +432,8 @@ def save_model(model: TrajectoryModel, conn) -> int:
             VALUES (%(route)s, %(segment)s, %(fpxid)s, %(fpyid)s, %(fvxid)s, %(fvyid)s, %(gid)s, %(hid)s)
             RETURNING id
             ''', {
-                'route': model.route,
-                'segment': model.segment,
+                'route': int(model.route),
+                'segment': int(model.segment),
                 'fpxid': f_p_x_id,
                 'fpyid': f_p_y_id,
                 'fvxid': f_v_x_id,
@@ -460,16 +462,26 @@ def model_from_db(res, conn):
     )
 
 
-def load_models(route: int, segment: int, conn) -> [TrajectoryModel]:
+def model_ids(route: int, segment:int, conn) -> [int]:
+    with conn.cursor(cursor_factory=DictCursor) as cur:
+        cur.execute(
+            '''SELECT id FROM model where route = %s AND segment = %s''',
+            (route, segment)
+        )
+        res = cur.fetchall()
+    return list(chain.from_iterable(res))
+
+def load_models(route: int, segment: int, limit: int, conn) -> [TrajectoryModel]:
     with conn.cursor(cursor_factory=DictCursor) as cur:
         cur.execute(
             '''
             SELECT route, segment, fpxid, fpyid, fvxid, fvyid, gid, hid
             FROM model
             WHERE route = %s
-            AND segment = %s;
+            AND segment = %s
+            LIMIT %s;
             ''',
-            (route, segment))
+            (route, segment, limit))
         res = cur.fetchall()
 
     return [model_from_db(x, conn) for x in res]

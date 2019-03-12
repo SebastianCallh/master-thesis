@@ -5,19 +5,18 @@ import numpy as np
 import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
-from GPy.models import GPRegression
+from GPy.models import SparseGPRegression, GPRegression
 from model import FunctionModel, TrajectoryModel
 from predict import predict
 import GPy
 
 def learn_function(
-    X: ndarray, Y: ndarray, applyPriors,
-    f_type: str, route: int, segment: int, kernel=None,
-    n_restarts=3
-) -> FunctionModel:
+        X: ndarray, Y: ndarray, applyPriors,
+        f_type: str, route: int, segment: int, kernel=None,
+        z=None, n_restarts=3) -> FunctionModel:
     #print(kernel)
     model = GPRegression(
-        X, Y, kernel,
+        X, Y, kernel,# Z=z,
         normalizer=False
     )
     applyPriors(model)
@@ -123,7 +122,7 @@ def learn_model(
         #m.likelihood.variance.fix()
              
     def apply_h_priors(m):
-        m.likelihood.variance = 10
+        m.likelihood.variance = 0.1
         m.likelihood.variance.fix()
 
     f_p_x = learn_function(
@@ -132,7 +131,7 @@ def learn_model(
         route_n, seg_n, kernel=GPy.kern.RBF(
             input_dim=1,
             ARD=False
-        )
+        ), z=np.random.rand(15, 1)
     )
     
     f_p_y = learn_function(
@@ -141,7 +140,7 @@ def learn_model(
         route_n, seg_n, kernel=GPy.kern.RBF(
             input_dim=1,
             ARD=False
-        ) 
+        ), z=np.random.rand(15, 1)
     )
     
     f_v_x = learn_function(
@@ -150,7 +149,7 @@ def learn_model(
         route_n, seg_n, kernel=GPy.kern.Matern52(
             input_dim=1,
             ARD=False
-        )
+        ), z=np.random.rand(15, 1)
     )
 
     f_v_y = learn_function(
@@ -159,7 +158,7 @@ def learn_model(
         route_n, seg_n, kernel=GPy.kern.Matern52(
             input_dim=1,
             ARD=False
-        )
+        ), z=np.random.rand(15, 1)
     )
 
     n_augment_samples = 10
@@ -187,7 +186,7 @@ def learn_model(
         ) + GPy.kern.Linear(
             input_dim=2,
             ARD=False
-        )
+        ), z=np.random.rand(50, 2)
     )
 
     time_left = data.time_left.values.reshape(-1, 1)

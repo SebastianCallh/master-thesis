@@ -1,12 +1,11 @@
+""""""
+import math
+import numpy as np
 from numpy import ndarray
 from scipy.stats import norm
-import numpy as np
-import math
 from functools import reduce
 from numpy.linalg import inv, det
 from model import TrajectoryModel, FunctionModel
-from plotting import plot_grid
-
 
 def predict(func: FunctionModel, X: np.ndarray) -> np.ndarray:
     return func.model.predict(X)
@@ -69,7 +68,8 @@ def model_data_loglik(model: TrajectoryModel, X_obs: ndarray, tau: ndarray) -> n
 
     if math.isinf(loglik_sum) or math.isnan(loglik_sum):
         print('inf loglik', loglik_pos_x, loglik_pos_y, loglik_vel_x, loglik_vel_y)
-        # mu = X_k_v_x
+        # m
+        u = X_k_v_x
         # x = vel[:,0].reshape(-1, 1)
         # sigma = np.diag(sigma_v_x.T[0])
         # #print(np.hstack([x, mu]))
@@ -83,35 +83,6 @@ def model_data_loglik(model: TrajectoryModel, X_obs: ndarray, tau: ndarray) -> n
         # plot_function(model.f_v_x, ax=ax)
         # ax.plot(tau, vel[:,0])
     return loglik_sum
-
-def prediction_distribution(grid, mu_and_sigma):
-    mu = mu_and_sigma[0]
-    sigma = mu_and_sigma[1]
-    return norm.pdf(grid, mu, np.sqrt(sigma))
-
-def mixture_distributions(
-        mus: ndarray,
-        sigmas: ndarray,
-        weights: ndarray,
-        grid_res=100,
-        grid_pad=3) -> ndarray:
-
-    # Create grid that covers all components
-    asc_preds = sorted(zip(mus, sigmas))
-    smallest_pred_mean = float(asc_preds[0][0])
-    smallest_pred_var = float(asc_preds[0][1])
-    xmin = max(0, np.floor(smallest_pred_mean - smallest_pred_var*grid_pad))
-    biggest_pred_mean = float(asc_preds[-1][0])
-    biggest_pred_var = float(asc_preds[-1][1])
-    xmax = np.ceil(biggest_pred_mean + biggest_pred_var*grid_pad)
-
-    t_grid = np.linspace(xmin, xmax, (xmax-xmin)*grid_res)
-    distributions = [
-        w*prediction_distribution(t_grid, (mu, sigma))
-        for mu, sigma, w in zip(mus, sigmas, weights)
-    ]
-
-    return distributions, t_grid
 
 def normalise_logliks(logliks):
     """Normalise model logliks for an observation."""
