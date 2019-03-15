@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Trajectory-based Arrival Time Prediction using Gaussian Processes</title>
+<style type="text/css">
+.underline { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="http://cdn.jsdelivr.net/reveal.js/3.0.0/css/reveal.css"/>
+
+<link rel="stylesheet" href="http://cdn.jsdelivr.net/reveal.js/3.0.0/css/theme/moon.css" id="theme"/>
+
+
+<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+<script>
+    if( window.location.search.match( /print-pdf/gi ) ) {
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'http://cdn.jsdelivr.net/reveal.js/3.0.0/css/print/pdf.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    }
+</script>
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section id="sec-title-slide">Trajectory-based Arrival Time Prediction <br /> using Gaussian Processes
+</section>
+
+
+<section>
+<section id="slide-org3de4b81">
+<h2 id="org3de4b81"><span class="section-number-2">1</span> Project Description</h2>
+<ul>
+<li>Motion pattern learning</li>
+<li>Arrival time prediction</li>
+<li>Automatic event detection</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-org3082bd8">
+<h2 id="org3082bd8"><span class="section-number-2">2</span> The Model</h2>
+<div class="outline-text-2" id="text-2">
+</div>
+</section>
+<section id="slide-org2fb6da2">
+<h3 id="org2fb6da2"><span class="section-number-3">2.1</span> Model Description</h3>
+<div class="column" style="float:left; width:67%">
+<p>
+\(\mathcal{M} = (\mathcal{M}_1, \mathcal{M}_2, \dots \mathcal{M}_K)\)
+</p>
+
+<p>
+Each model \(\mathcal{M}_k\) consists of
+\(\begin{split}
+f_k & \sim \mathcal{GP}(m_{f_k}&(\dots), k_{f_k}(\dots)) \\
+g_k & \sim \mathcal{GP}(m_{f_k}&(\dots), k_{f_k}(\dots)) \\
+h_k & \sim \mathcal{GP}(m_{f_k}&(\dots), k_{f_k}(\dots)) \\
+f_k & : \tau       & \mapsto (p_x, p_y, v_x, v_y)\\
+g_k & : (p_x, p_y) & \mapsto \tau \\
+h_k & : \tau       & \mapsto t
+\end{split}\)
+</p>
+
+<p>
+\(X_{obs}\) is observed in \((p_x, p_y, v_x, v_y)\)
+</p>
+
+</div>
+<div class="column" style="float:right; width:33%">
+<img style="border:none; box-shadow:none; background:none;" data-src="figures/deep-gp-model.png">
+</div>
+
+</section>
+<section id="slide-orgc56f18b">
+<h3 id="orgc56f18b"><span class="section-number-3">2.2</span> Model Synchronisation pt. 1</h3>
+<ul>
+<li>Intuitively the model approximates the projection \(p\)</li>
+<li>\(X_{obs}\) is observed stochastic variable</li>
+<li>\(X_k\) is projected stochastic variable</li>
+<li>The closest model is used for predicting arrival time</li>
+
+</ul>
+
+<img style="border:none; box-shadow:none; background:none;" data-src="figures/model-projection-perspective.png">
+
+</section>
+<section id="slide-orgd4ea84b">
+<h3 id="orgd4ea84b"><span class="section-number-3">2.3</span> Model Synchronisation pt. 2</h3>
+<ul>
+<li>Similar motion pattern \(\implies\) similar arrival time</li>
+<li>Similarity as model probabilities</li>
+
+</ul>
+
+<p>
+\(\begin{split}& p(\mathcal{M}_k \vert X_{obs} = x, X_k = x) \propto \\
+& p(X_{k} = x \vert X_{obs} = x, \mathcal{M}_k) p(\mathcal{M}_k)\end{split}\)
+</p>
+
+</section>
+<section id="slide-orgc6fe4f4">
+<h3 id="orgc6fe4f4"><span class="section-number-3">2.4</span> Model Synchronisation pt. 3</h3>
+<p>
+The likelihood for a new observation \(x\) is given by
+</p>
+
+<p>
+\(p(X_{k} = x \vert X_{obs} = x, \mathcal{M}_k)\)
+\(= \int p(X_k = x \vert \mathcal{M}_k, \tau)p(\tau | X_{obs} = x, \mathcal{M}_k)d\tau\)
+</p>
+
+<p>
+where \(p(\tau | X_{obs} = x, \mathcal{M}_k)\) is approximated as \(\delta_{\mu_t}(\tau)\)
+to enable a closed form solution.
+</p>
+
+</section>
+<section id="slide-org1d28c57">
+<h3 id="org1d28c57"><span class="section-number-3">2.5</span> Model Synchronisation pt. 4</h3>
+<p>
+The likelihood is then
+</p>
+
+<p>
+\[p(X_{k} = x \vert X_{obs} = x, \mathcal{M}_k) = \int p(X_k = x \vert \mathcal{M}_k, \tau)\delta_{\mu_t}(\tau)d\tau\]
+</p>
+
+<p>
+where \(p(X_k = x \vert \mathcal{M}_k, \tau)\) is given through the
+exponent of
+\[\begin{split}
+\log p(X_k = x \vert \mathcal{M}_k, \tau) & \propto
+-\frac{1}{2}(x-\mu_{f_k}(\tau))[\Sigma_{f_k}(\tau)]^{-1}(x-\mu_{f_k}(\tau))^T \\
+& = -\frac{1}{2} \log \vert \Sigma_{f_k}(\tau) \vert
+\end{split}\]
+and \(\mu_{f_k}(\tau)\), \(\Sigma_{f_k}(\tau)\) are the predictive mean and covariance functions of \(f_k\).
+</p>
+
+</section>
+<section id="slide-org78925d5">
+<h3 id="org78925d5"><span class="section-number-3">2.6</span> Arrival Time Prediction pt. 1</h3>
+<p>
+The distribution over arrival time \(t_k\) is similarly given by
+\[p(t_k \vert X_{obs} = x, \mathcal{M}_k) = \int p(t_k \vert \mathcal{M}_k, \tau)p(\tau | X_{obs} = x, \mathcal{M}_k)d\tau\]
+</p>
+
+<p>
+which with the same approximation as before gives
+</p>
+
+<p>
+\[p(t_k \vert X_{obs} = x, \mathcal{M}_k) = \int p(t_k \vert \mathcal{M}_k, \tau)\delta_{\mu_t}(\tau)d\tau.\]
+</p>
+
+<p>
+The distribution is consequently the posterior of GP \(h_k\) weighted by \(\delta_{\mu_t}(\tau)\).
+</p>
+
+</section>
+<section id="slide-orgaca9c56">
+<h3 id="orgaca9c56"><span class="section-number-3">2.7</span> Arrival Time Prediction pt. 2</h3>
+<p>
+The distribution over arrival times \(t\) for the entire system is given
+by the GP mixture
+</p>
+
+<p>
+\[p(t \vert X_{obs} = x) = \sum_k p(t_k \vert X_{obs},
+\mathcal{M}_k)p(\mathcal{M}_k \vert X_{obs} = x).\]
+</p>
+
+</section>
+<section id="slide-orgb5cafcc">
+<h3 id="orgb5cafcc"><span class="section-number-3">2.8</span> The model at Work pt. 1</h3>
+<p>
+Model probabilities are updated over time
+</p>
+
+<p>
+The system has infinite memory
+</p>
+<img data-src="figures/model-cum-probabilities-example.png">
+
+</section>
+<section id="slide-org662faf4">
+<h3 id="org662faf4"><span class="section-number-3">2.9</span> The model at Work pt. 2</h3>
+<p>
+Several statistics available for making predictions 
+</p>
+<img width="500px" data-src="figures/model-weighting-example-arrival-time-distributions.png">
+
+</section>
+</section>
+<section>
+<section id="slide-orgacc3e5f">
+<h2 id="orgacc3e5f"><span class="section-number-2">3</span> State of the Project</h2>
+</section>
+<section id="slide-org597bf4f">
+<h3 id="org597bf4f"><span class="section-number-3">3.1</span> Current Problems</h3>
+<div class="outline-text-3" id="text-3-1">
+</div>
+</section>
+<section id="slide-orgc1bdf75">
+<h4 id="orgc1bdf75"><span class="section-number-4">3.1.1</span> System in-sample performance</h4>
+<p>
+Performance is still poor
+</p>
+<img data-src="figures/30-model-30-traj-in-sample-error.png">
+
+</section>
+<section id="slide-orgefb8051">
+<h4 id="orgefb8051"><span class="section-number-4">3.1.2</span> System out-of-sample performance</h4>
+<p>
+Performance is still poor
+</p>
+<img data-src="figures/30-model-30-traj-out-of-sample-error.png">
+
+</section>
+<section id="slide-org93ebc1f">
+<h4 id="org93ebc1f"><span class="section-number-4">3.1.3</span> System out-of-sample performance</h4>
+<p>
+One reason: Static \(\sigma_n\) in motion pattern models
+</p>
+
+<p>
+Leads to inconsistent SNR
+</p>
+<img data-src="figures/everything-is-noise-issue.png">
+
+</section>
+<section id="slide-orgbc4b1ca">
+<h4 id="orgbc4b1ca"><span class="section-number-4">3.1.4</span> System out-of-sample performance</h4>
+<p>
+Low SNR gives poor model probabilties
+</p>
+<img data-src="figures/model-cum-probabilities-bad-example.png">
+
+</section>
+<section id="slide-orgc2ea799">
+<h4 id="orgc2ea799"><span class="section-number-4">3.1.5</span> System out-of-sample performance</h4>
+<p>
+Low SNR gives poor model probabilties, and poor predictions
+</p>
+<img width="500px" data-src="figures/model-weighting-bad-example.png">
+
+</section>
+<section id="slide-org2a22127">
+<h4 id="org2a22127"><span class="section-number-4">3.1.6</span> Synchronisation performance</h4>
+<p>
+The synchronisation generally works very well
+</p>
+<img data-src="figures/synch-good-example.png">
+
+</section>
+<section id="slide-org38333db">
+<h4 id="org38333db"><span class="section-number-4">3.1.7</span> Synchronisation performance</h4>
+<p>
+But it has issues with segments with small movement
+</p>
+<img data-src="figures/synch-bad-example.png">
+
+
+</section>
+<section id="slide-org1867364">
+<h3 id="org1867364"><span class="section-number-3">3.2</span> Technical issues</h3>
+<p>
+The project has heavily used GPy, with some issues
+</p>
+<ul>
+<li>GPy fresh install is broken</li>
+<li>GPy produces negative covariances</li>
+<li>GPy cannot store sparse GPs</li>
+
+</ul>
+
+</section>
+</section>
+<section>
+<section id="slide-orga21c9b2">
+<h2 id="orga21c9b2"><span class="section-number-2">4</span> Project Future</h2>
+<div class="outline-text-2" id="text-4">
+</div>
+</section>
+<section id="slide-orgb5c6a9e">
+<h3 id="orgb5c6a9e"><span class="section-number-3">4.1</span> Model Improvements</h3>
+<ul>
+<li>Improve motion pattern models to not use static \(\sigma_n\)</li>
+<li>Compute proper model uncertainty for \(h_k\) prediction</li>
+<li>If needed: trajectory clustering/filtering</li>
+<li>Automatic event detection</li>
+<li>Transitions from one segment to the next</li>
+
+</ul>
+
+</section>
+<section id="slide-org277a700">
+<h3 id="org277a700"><span class="section-number-3">4.2</span> Model Improvements</h3>
+<ul>
+<li>Improve motion pattern models to not use static \(\sigma_n\)</li>
+<li>Fusion of synthetic models</li>
+
+</ul>
+<img  data-src="figures/fusion-fail.png">
+
+</section>
+<section id="slide-orgad65ef5">
+<h3 id="orgad65ef5"><span class="section-number-3">4.3</span> Research Questions</h3>
+<ul>
+<li>How can Gaussian processes be used to predict arrival times of
+  trajectories, minimising MAE?</li>
+
+<li>How can user-specified events be automatically detected in a GP
+  motion pattern model?</li>
+
+</ul>
+</section>
+</section>
+</div>
+</div>
+<script src="http://cdn.jsdelivr.net/reveal.js/3.0.0/lib/js/head.min.js"></script>
+<script src="http://cdn.jsdelivr.net/reveal.js/3.0.0/js/reveal.js"></script>
+
+<script>
+// Full list of configuration options available here:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+
+controls: true,
+progress: true,
+history: false,
+center: true,
+slideNumber: 'c',
+rollingLinks: false,
+keyboard: true,
+overview: true,
+maxScale: 2.00,
+
+theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+transition: Reveal.getQueryHash().transition || 'none', // default/cube/page/concave/zoom/linear/fade/none
+transitionSpeed: 'default',
+multiplex: {
+    secret: '', // null if client
+    id: '', // id, obtained from socket.io server
+    url: '' // Location of socket.io server
+},
+
+// Optional libraries used to extend on reveal.js
+dependencies: [
+ { src: 'http://cdn.jsdelivr.net/reveal.js/3.0.0/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }]
+});
+</script>
+</body>
+</html>
