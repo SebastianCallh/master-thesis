@@ -207,12 +207,200 @@ This document is for logging the day-by-day progress of my master's thesis.
   bugs. 
 
   <2019-02-07 tor>
-  
-* Week 11
+  (Forgot to write) Wrote background on machine learning. 
 
-  Sometime this week the half-time meeting will take place.
-  This is probably a good time to find an opponent, since it will be
-  more obvious who will finish their work in time.
+  <2019-02-08 fre>
+  (Forgot to write) Almost finished with background on machine
+  learning. Need to talk about marginal likelihood. 
+
+* Week 7
+  <2019-02-11 mån>
+  Caught a cold over the weekend so I took they day off.
+
+  <2019-02-12 tis>
+  Had a meeting with Tiger and put down the final formal description
+  of the model. Also discussed various improvements to the model, such
+  as projecting onto Euclidian space before training GPs, how to
+  properly normalise the arrival time prediction mixture, and adding
+  "support GPs" to get a proper variance.
+
+  <2019-02-13 ons>
+  Implemented equirectangular projection as pre-processing step. This
+  should do, as long as the data is not too spread out. If it is, this
+  approximation will be shite. I have also discovered a problem with
+  how the trajectories are normalised. Currently, they are normalised
+  individually, but this is a problem since. The same trajectory won't
+  look the same for every model. I think all trajectories for each
+  segment need to be normalised in the same way. I should ask Tiger.
+
+  <2019-02-14 tor>
+  I proof read and rewrote some parts in the background
+  chapter. Additionally I wrote about marginal likelihood and finished
+  the section on compound kernel search. I removed MAPE from model
+  evaluation. I need to ask Tiger about residual distribution. Should they be Gaussian in
+  the end? Is the MSAE relevant because of this? 
+  
+* Week 8
+  <2019-02-18 mån>
+  I started to incorporate the formal model description into the
+  methods chapter. It is hard to write, as always. What remains is how
+  to refer to the synch-model, and the regular model, and to connect
+  all GPs to final arrival time prediction.
+
+  <2019-02-19 tis>
+  Had a meeting with Tiger and asked him about error metrics and about
+  coordinate systems for tau and the data. Also told him about Klarna,
+  and he was kinda negative. Oh bother.
+
+  <2019-02-20 ons>
+  Implemented normalising all trajectories in the same coordinate
+  system, ratio-preserving scaling, and ARD to get around lat and lon
+  nog being euclidian. I got stuck at how to calculate data log
+  likelihood, so I sent Tiger an email. I also started to revise the
+  methods chapter, to structure it better with new parts of deriving
+  the formal model, training it, and querying it.
+
+  <2019-02-21 tor>
+  Wrote some more on the methods chapter and mucked about with some
+  bugs with normalising the data. 
+
+  <2019-02-22 fre>
+  There was problems with computing velocity. It performed some
+  trigonometry that assumes angle and radius in a Euclidian plane, but
+  this does not apply for latitude and longitude.  Now it is estimated
+  as the difference between consequtive points.
+  
+  I solved some bugs in the arrival time prediction. I assume that the
+  data log likelihood is just the sum of the independent log
+  likelihoods, but I've yet to receive a response from Tiger on this question.
+
+  Something seem to be off with the predictions though. They do not
+  correspond to the plots of the individual models.
+* Week 9
+  <2019-02-25 mån>
+    Forgot to write this day. Fixed some bugs in prediction. The log
+    likelihood was computer completely wrong, but after reading Bishops
+    I set it straight.
+
+  <2019-02-26 tis>
+    Forgot to write this day. Ironed out some additional bugs and wrote
+    benchmarking functionality. The performance was terrible.
+
+  <2019-02-27 ons>
+    Hopefully fixed the last couple of bugs and plotting! 
+    OMW to  meeting with Tiger. So far I have made the final model work
+    on a few trajectories on a specific segment, hopefully it is only
+    down to hyper parameters now.
+
+    A lot of stuff need to be done:
+      - Plot cumulative \(P(\mathcal{M}_k | \tau\)
+      - Figure out the variance of \(P(t | \tau\)
+
+  <2019-02-28 tor>
+    Log likelihood of all models are quite high, so I tried to lower it
+    by lowering the variance of the state models. However, there is a
+    problem where the cumulative log likelihood of some highly unlikely
+    model becomes -40000, and when normalising this blows everything
+    up. I'm not sure how to handle this.
+
+  <2019-03-01 fre>
+    I tried to normalise velocity as well, and it seems to be reasonable
+    in the cumulative log likelihood plots. However, the log likelihood
+    when making predictions seem to be infinity because of super small
+    covariances. Something is definitely off.
+
+    I also need to put all the plots into the report, so I should save
+    nice plots that appear during debugging. 
+
+* Week 10
+  <2019-03-04 mån>
+  Changed my implementation of computing log likelihood to one a found
+  in GPy and stuff does not seem to be infinity any more. The plots
+  look really good, especially after fixed likelihood noise in /(h/).
+
+  It seems like the correct model is easily out-voted even with no fixed
+  likelihood. This causes mean predictions to give worse in-sample
+  performance than mode predictions.
+
+  I had a meeting with Tiger. It is clear that the "solution" to the
+  numerical instability was nonsense. I think I will have to go back
+  to manually computing the log likelihood.
+
+
+  <2019-03-05 tis>
+  It is clear that something is off when computing the determinant of
+  /(\sigma/). I /think/ that this could be because of the velocity
+  in either x- or y-direction being incredibly small. The numerical
+  instability for segment 9 happens around halfway through the segment,
+  which is where /(dy/) should be very small.
+
+  I will give this idea a go when I get home.
+
+  <2019-03-06 ons>
+  I met with Tiger and figured out a lot of stuff. Arrival time
+  clusters should be modeled as Gaussians witåh mean prior from /(h/)
+  and /(sigma/) from accumulated model uncertainty. 
+
+  <2019-03-07 tor>
+  Today I worked with the GP prior for arrival time mean. Currently
+  the variance is static to simulate accumulated uncertainty, but
+  there are some confusion. Primarily the fact
+  that they are all the same size, which doesn't make sense. However,
+  should they only be based on /(h/) they will be incredibly uneven
+  depending on how non-linear /(h/) is. Some compromise is wanted,
+  however there is no real likelihood and prior to use Bayes theorem
+  so I am at a loss. I will write this in the weekly report tomorrow.
+
+  <2019-03-08 fre>
+  Forgot to write. GPy started giving /negative covariances/ when
+  estimating /(h/). Sad times. Managed to plot model performance
+  segment-wise, but the in-sample performance was way too big, so
+  there is some bug.
+
+* Week 11
+  <2019-03-11 mån>
+  Figured out the bug with he performance. Stuff is still not very
+  good out of sample, so I'm working on inducing inputs to be able to
+  run with more trajectories. Currently is is done with 30. 
+
+  Fucking GPy does not seem to support saving models with inducing
+  inputs... Maybe it is possible to do it manually.
+
+  <2019-03-12 tis>
+  I did not manage to find a way to save inducing input models. I am
+  not certain what the next step is. I suppose I could throw more
+  trajectories in there and let it run, but it would take sooooo long.
+  
+  Basically the entire day has been spent training and evaluating
+  models. It is not quite done yet, but I am off to meet Tiger. It
+  evaluated on 50 trajectories using 5, 10, 20, 30, 50 models.
+
+  <2019-03-13 ons>
+  I forgot to write this day. However, I had the mentioned meeting
+  With Tiger yesterday. We concluded that it was time to make
+  pseudo-clusters instead of the static /(\sigma_n/) that is currently used.
+
+
+  <2019-03-14 tor>
+  I forgot to write this day. I spent most of the day preparing the
+  presentation for the half-time seminar.
+
+  <2019-03-15 fre>
+  I attended the half time seminar. It went well and Heintz offered me a
+  position as an industrial PhD. 
+
+* Week 12
+  <2019-03-16 mån>
+  I am having issues with the pseudo-clustering. If one spans the
+  clusters spatially this does not create clusters with uniform
+  variance in tau-space. On the other hand, if one clusters in
+  tau-space the different GPs become completely disconnected from an
+  a priori specified cluster width.
+
+  I am hoping to meet with Tiger to talk to him about it. However, he
+  seems to be very busy today. Here's hoping.
+
+  <2019-03-17 tis>
 
 * Week 19
   This week the report should be done and send to the opponent.

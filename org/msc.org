@@ -89,6 +89,44 @@
      - Probability of arriving too late (w.r.t. time tables)
      - Prediction variance as a function of number of observations
 
+** Before half-time seminar
+*** What to do for seminar?
+    Presentation. Notation. Frågeställningar, resultat, fortsättning, problem
+
+*** Discuss performance plots
+    SD and prior for error plots. Prior at /(\tau=0.0/) for baseline.
+    Plot state model in SI units, like km/h
+    Look over markers of true arrival time
+    Plot state model of out of sample that performs good and bad
+    Copy-gps to span variance in a new model. Important to check that
+    the mean prediction of resulting Laplace approximation is same as
+    vanilla model.
+
+*** Discuss DPGP model
+    [[https://link.springer.com/article/10.1007/s10514-011-9248-x][link]]
+
+*** Discuss issues with GPy
+**** Negative Covariances
+     math.abs.
+
+**** SparseGPRegression cannot be saved
+     
+*** Combining uncertainty in /(P(t)/) from /(P(\mu_t)/) and model variance
+    Sum from /(h/) and Normal distribution summarising  model uncertainty.
+
+** After halv-time seminar
+   split segment 1
+   print warnining in infinity
+   fit file system in RAM for many GPs
+   
+   HUR KAN MAN SÄTTA PRIORS vilka priors för kluster?
+   n-gram över transitioner
+   plotta burn-in över ankomsttidsprediktioner
+   interval över ankomsttider från approximerade moder - frågeställning?
+   segmentera data, mät träffsäkerhet på olika omständigheter
+   event-detection: om man byter mellan mycket
+   meta-event? trajektoria vi ej kan 
+
 * Problem formulation
     <<sub-problems>>
 **** DONE Arrival time prediction
@@ -383,7 +421,7 @@
     - [X] Related work
     - [X] Time plan
 
-** Project start
+** Project
 *** DONE Review intro section and the use of the phrase "system"
     CLOSED: [2019-02-01 fre 12:47]
 *** DONE Write delimitations
@@ -410,6 +448,46 @@
      - Read paper "Advantages of the mean absolute error (MAE)
      over the root mean square error (RMSE) in assessing average model performance"
      
+*** TODO Plots before half-time-report
+    Plots should contains 2 standard deviations sqrt(posterior variance)*2
+
+**** DONE Plot /(h/) for models
+     CLOSED: [2019-03-07 tor 10:23]
+**** DONE Plot state models and arrival time models on y and tau on x for most likely models 
+     CLOSED: [2019-03-07 tor 08:54]
+     - Just a scaled Normal for arrival time?
+       Almost. h as prior for mu for final arrival time normal distribution which has fixed variance.
+     - Disregard cluster frequencies. The model wants to compute the
+       most probable motion pattern, spatio-temporally, not most
+       frequently observed pattern.
+
+     - Currently: f_p_sigma_n = 1, f_v_sigma_n = .5
+     - Some out of sample p_x, p_y likelihoods is inf
+
+**** DONE Plot likelihood in probability space
+     CLOSED: [2019-03-06 ons 09:38]
+**** DONE Investigate insane weights in arrival time prediction (is probably the numerical instability)
+     CLOSED: [2019-03-06 ons 09:38]
+**** DONE Plot arrival time prediction priors
+     CLOSED: [2019-03-06 ons 09:38]
+**** TODO Plot state space priors
+**** TODO Convert to static arrival times
+**** TODO Set up reproducible inf in log likelihood
+**** TODO Look at Hellinger^2 for comparison of GP models
+     
+*** DONE Figure out numerical instability
+    CLOSED: [2019-03-06 ons 09:55]
+    - Plot velocities
+    - Try another segment with no movement orthogonal to basis
+
+
+** Report
+*** DONE Connect M and Mtilde
+    CLOSED: [2019-02-21 tor 14:09]
+*** TODO Connect final arrival time predictions
+*** TODO The name "synchronisation model" seems rather arbitrary
+*** TODO Write about kernel parameters
+*** TODO Write about clustering
 
 * Questions
   A place to quickly jot down questions so they are not forgotten.
@@ -489,6 +567,45 @@
     I lack any motivation for this apart from "it was the most simple
     to implement"
 
+
+*** What performance metrics are relevant?
+    Are there any specific metrics on trajectory data? Not a typical
+    problem, where the metric is minimised. Is MSE relevant since
+    posterior is gaussian?
+
+    Not sure 
+
+*** Can we define "being synchronised?"
+    At first I thought of it as two trajectories having the same
+    length, but I guess trajectories are synchronised in tau, where
+    this is not the case, so that definition fails.
+
+    They are synchronised as functions of a fixed tau through the
+    synchronisation model.
+
+*** How to normalise trajectories?
+    As mentioned in week report 8, I am uncertain what the best way to
+    do this is.
+
+    Antingen
+    1. Antag noll mean. Normalisera var för sig, och spara koordinatsystem
+    2. Antag ej noll mean, skatta väntvärde för alla.
+
+    Avbilda alla på x/y. Vi skiter i var vi är i världen, så
+    subtrahera medelvärde Det måste vara euklidiskt. Samma skalning
+    för alla trajektorier måste användas.Lär normalisering Aldrig
+    behandla olika dimensioner för sig!
+
+    Plotta på karta, plotta på normaliserat system
+
+    Fixerad likelihood variance för arrival time. För vi har inga
+    kluster, så skapar artificiella.
+
+*** The predictions are very pointy
+    Släng på hastighet, det kommer blåsa upp variansen massor och det
+    blir bra. Kanske.    
+
+
 ** For Heintz
    This section contain questions for Fredrik Heintz, examiner of
    this thesis project.
@@ -509,3 +626,4 @@ Givet trajectoria vill vill kunna jämföra den. Vi vill prata om
 närmast euklidisk projektion. 
 Första problemet är "vad har en punkt i rummet för projektion på tajektrian?"
 tau represents the generalisation and predictions are based on that
+
