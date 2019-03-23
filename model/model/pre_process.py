@@ -1,11 +1,11 @@
-from itertools import tee
 from math import sqrt
-from typing import List, Tuple, Callable, NamedTuple
+from typing import List, Tuple
 import numpy as np
 import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame, Series
 
+from .segment_normaliser import SegmentNormaliser
 
 # https://stackoverflow.com/questions/52907328/pandas-delete-first-n-rows-until-condition-on-columns-is-fulfilled
 def drop_start_dwell(data: DataFrame) -> DataFrame:
@@ -155,7 +155,8 @@ def pre_process(
     data['tau'] = compute_tau(data)
     data = take_fraction(data, fraction_observed)
     dx, dy = compute_velocity_from_pos(data)
-    data['dx'] = dx
-    data['dy'] = dy
-    data = normaliser.normalise(data)
+    data.x = normaliser.normalise_x(data.x)
+    data.y = normaliser.normalise_y(data.y)
+    data['dx'] = normaliser.normalise_dx(dx)
+    data['dx'] = normaliser.normalise_dy(dy)
     return data

@@ -45,12 +45,12 @@ def plot_grid(n_rows, n_cols):
     )
 
 
-def plot_data(ax, grid, data):
+def plot_data(ax, grid, data, marker='x', label='Observations'):
     ax.scatter(
         grid, data,
-        marker='x',
+        marker=marker,
         color='#202020',
-        label='Observations'
+        label=label
     )
 
 
