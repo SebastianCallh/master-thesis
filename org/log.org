@@ -401,6 +401,54 @@ This document is for logging the day-by-day progress of my master's thesis.
   seems to be very busy today. Here's hoping.
 
   <2019-03-17 tis>
+  I think I finally got everything to work with the new model. The in
+  sample error from testing on 10 trajectories has a largest mean of 1
+  second, which really is acceptable. The results will drop in after I
+  leave, so I'll have to find out tomorrow. 
+
+  The model evaluation is still incredibly slow. I will look into
+  optimisations tomorrow when I know that the models are fine. Some
+  things to look into are
+  - Perform the pre-process step once for each segment
+  - Compute model weights directly, without cumulative probabilities
+
+  Lastly, it should now be possible to compute model probabilities
+  from the current log likelihood. 
+
+  <2019-03-18 ons>
+  The in sample results seems good! The out of sample run had a bug so
+  no results was produced.
+
+  I discovered that the infinite log likelihood happens when I make a
+  single computation in numpy. Looping over the individual samples and
+  taking the cumulative sum of those avoids this issue. Why this is I
+  currently do not know.
+
+  <2019-03-19 tor>
+  I met with Tiger and talked about a lot of things. The performance
+  is still poor (it was variance and not standard deviation in the
+  performance plots) and the log likelihoods were computed
+  wrongly. This has fortunately been addressed, but I am afraid that
+  things are taking longer than I had hoped for. I wanted to start
+  working on event detection the coming week but it seems unlikely.
+
+  <2019-03-25 mån>
+  This was quite an awful Monday. The plotting has been acting up
+  completely while trying to implement sparse GPs. I have gotten a
+  single example to work in the notebook, so tomorrow I need to
+  implement it in the project to enable storing them in a database. 
+
+  <2019-03-26 tis>
+  Today I finished the plotting with SI units, and the implementation
+  of inducing inputs. Good times! After training 60 models for 2.5
+  hours it turns out that the model is in fact terrible, even in sample.
+  Huge let down of course. Maybe I can compute the amount of inducing
+  points to use based on some minimum difference in KL-divergence from
+  the true model. 
+
+  I have to investigate this tomorrow. It might be a good timing to
+  read up on the way inducing inputs are learned and write about that
+  in the backgrounds chapter.
 
 * Week 19
   This week the report should be done and send to the opponent.

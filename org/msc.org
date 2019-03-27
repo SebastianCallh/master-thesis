@@ -480,14 +480,28 @@
     - Plot velocities
     - Try another segment with no movement orthogonal to basis
 
+*** TODO normerade kumulativ summa av log likelihoods för vikter
+*** TODO kör tau->x space plus-minus allt. Sen plotta i (x, y).
+*** TODO matten för normeringen i rapport
+*** TODO Cite Linus Kortesalmi on data exploration
 
 ** Report
 *** DONE Connect M and Mtilde
     CLOSED: [2019-02-21 tor 14:09]
 *** TODO Connect final arrival time predictions
 *** TODO The name "synchronisation model" seems rather arbitrary
-*** TODO Write about kernel parameters
-*** TODO Write about clustering
+*** DONE Write about kernel parameters
+    CLOSED: [2019-03-20 ons 14:04]
+*** DONE Write about clustering
+    CLOSED: [2019-03-20 ons 14:04]
+*** TODO Rewrite data augmentation
+*** TODO Consistent mention of /(f_{k_x}/)
+*** TODO Replace "data augmentation" under 5.2 with "Enforcing orthogonality"
+*** TODO Add pseudo-clusters under 5.2
+*** TODO Add prior/posterior plots under querying the model under 5.3
+*** TODO Write about the model uncertainty in 5.3
+*** TODO Add plots over model probabilities under 5.3
+
 
 * Questions
   A place to quickly jot down questions so they are not forgotten.
@@ -536,7 +550,7 @@
 *** Material for Kalman smoother?
     Tiger will email matlab-code for this.  I've borrowed a book on statistical sensor fusion which covers this theory.
 
-
+    
 *** How do we compute the likelihood?
     We consider S' -> tau as deterministic, so it has to be for tau -> S.
     I assume it is for new observation x, and corresponding tau, but
@@ -606,6 +620,27 @@
     blir bra. Kanske.    
 
 
+*** TODO Can we do Bayesian model selection? There is only point estimates of /(\theta/)
+*** TODO Update research questions
+*** TODO Write properly what MAP is
+*** TODO Write about the pre-processing and data normalisation
+
+*** Overlaps when orothogonal in /((tau, x)/)
+*** TODO sparse guys - plotta utan något untanför /(\tau = [0, 1]/)
+*** TODO Estimate hyper parameter priors for MAP
+*** TODO Write about intergration of uncertainty 
+    Finally, the uncertainty in $\predf_{k}$ do not account for the
+    uncertainty in $\modelf_{k}$, which requires     
+
+*** TODO Fix math in Bayesian Model Selection 
+
+*** TODO Fixa SI-enheter för plots och priors
+*** TODO 2 sd on performance plots
+*** TODO Plotta distributioner över arrival times för alla segment
+*** TODO Byt ut bilden på data augmentering
+*** TODO Byt ut bilden på single trajectory motion patterns 
+*** Kanske undersök NN-kernel
+
 ** For Heintz
    This section contain questions for Fredrik Heintz, examiner of
    this thesis project.
@@ -626,4 +661,6 @@ Givet trajectoria vill vill kunna jämföra den. Vi vill prata om
 närmast euklidisk projektion. 
 Första problemet är "vad har en punkt i rummet för projektion på tajektrian?"
 tau represents the generalisation and predictions are based on that
+
+
 
