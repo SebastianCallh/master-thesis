@@ -1,5 +1,3 @@
-
-
 \documentclass[msc,lith,englisho]{liuthesis}
 
 \include{settings}
@@ -8,7 +6,10 @@
 \usepackage{rotating}
 \usepackage{color}
 \usepackage{float}
+\usepackage{amsmath}
 
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
 
 % Notation
 \newcommand{\prob}{p}
@@ -17,7 +18,6 @@
 \newcommand{\hyperparam}{\theta}
 \newcommand{\obs}{x}
 \newcommand{\stochobs}{X}
-
 \newcommand{\len}{\text{len}}
 \newcommand{\dur}{\text{dur}}
 \newcommand{\traj}{T}
@@ -25,9 +25,11 @@
 \newcommand{\synchedobs}{X}
 \newcommand{\timespace}{t}
 \newcommand{\synchspace}{\tau}
-\newcommand{\statespace}{S}
+\newcommand{\synchslice}{\tau^*}
+\newcommand{\statespace}{S}`
 \newcommand{\posspace}{S'}
 \newcommand{\modelf}{f}
+\newcommand{\combinedf}{f^{'}}
 \newcommand{\synchf}{g}
 \newcommand{\predf}{h}
 \newcommand{\arrtime}{t}

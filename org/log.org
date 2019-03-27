@@ -450,6 +450,17 @@ This document is for logging the day-by-day progress of my master's thesis.
   read up on the way inducing inputs are learned and write about that
   in the backgrounds chapter.
 
+  <2019-03-27 ons>
+  The performance is still shit. I discovered a bug where the 
+  velocity of the final point got duplicated and broke performance for
+  small trajectories. But even after fixing it, the model is still terrible. 
+  I am going to have a quick meeting with Tiger tomorrow and talk
+  about progressing the thesis project anyway. 
+
+  Fucking latex-mode in emacs broke as well so I cant find any
+  errors. I am beyond infuriated. 
+
+  
 * Week 19
   This week the report should be done and send to the opponent.
 

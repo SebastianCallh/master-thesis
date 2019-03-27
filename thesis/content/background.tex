@@ -87,7 +87,7 @@ independent of all other. This means that the probability of a pair of observati
 is $\prob(X \vert \hyperparam) = \prod_{i=1}^N\prob(\obs_i \vert \hyperparam)$.
 This is known as the \textit{likelihood}, which describes how likely
 the data is given a certain $\hyperparam$. One way of training a model is
-by finding $\hat{\hyperparam} = \underset{\hyperparam}{\mathrm{argmax}}$ $\prob(X \vert \hyperparam)$, 
+by finding $\hat{\hyperparam} = \argmax_\hyperparam\prob(X \vert \hyperparam)$, 
 which is called \textit{maximum likelihood}-estimation (ML-estimation), since it picks the
 $\hyperparam$ that maximises the likelihood of the data. However, this picks a single
 ``best value'', highly sensitive to the choice of training data, which
@@ -126,9 +126,9 @@ Bayes theorem
   \label{eq:bayes}
   \prob(\hyperparam \vert X) = \frac{\prob(X \vert \hyperparam) \prob(\hyperparam)}{\prob(X)}
 \end{equation}
-is used to estimate $\hyperparam$ from the \textit{posterior} distribution $\prob(\hyperparam \vert X)$.
-This process is called \textit{maximum a posteriori}-estimation (MAP-estimation). To use Bayes
-rule a \textit{prior} distribution $\prob(\hyperparam)$ is required, which formalises
+is used to estimate $\hyperparam$ from the \textit{posterior}
+distribution $\prob(\hyperparam \vert X)$. 
+To use Bayes rule a \textit{prior} distribution $\prob(\hyperparam)$ is required, which formalises
 a prior belief about $\hyperparam$ before observing any data. The prior is
 subjective, and different people may pick different priors,
 representing their personal belief about the data. By picking a
@@ -137,9 +137,16 @@ avoided. In the case of GPs, this corresponds to a distribution over kernel
 parameter $\hyperparam$ which gives a very wide
 kernel. This implies a high correlation between observations further
 apart, which in turn implies a slowly-varying function.
+
+The posterior quantifies the uncertainty in $\hyperparam$, but can be computationally
+expensive to work with. Because of this it is sometimes desirable to
+estimate $\hyperparam$ as $\hyperparam_{MAP} = \argmax_\hyperparam
+\prob (\hyperparam \vert \stochobs)$; a process called \textit{maximum a posteriori}-estimation (MAP-estimation).
 In summary, the process of training a model is equivalent to computing
 the posterior, from which the most probable model parameters can be
-extracted. Training a model using ML- or MAP-estimation both require that the
+extracted. 
+
+Training a model using ML- or MAP-estimation both require that the
 likelihood can be optimised. This is not always possible to do in
 closed form, in which case iterative methods, such as Stochastic
 Gradient Descent (SGD) can be used. These types of methods are
@@ -189,8 +196,8 @@ about new observations, via the \textit{posterior
 
 which accounts for the parameter uncertainty through the
 marginalisation of $\hyperparam$. From the predictive distribution,
-very sophisticated predictions can be made. The ``best guess'' of $y$
-is represented by $\text{E}[y \vert X]$, and thanks to having
+very sophisticated predictions can be made. The single ``best guess'' of $y$
+is represented by $\text{E}[y \vert X]$, but thanks to having
 an entire distribution it is possible to compute exactly how certain
 it is. This can be done by computing the \textit{credible
   intervals}~\cite{Morey2016Feb} for the distribution, which is the
@@ -199,6 +206,26 @@ the 95\%-credible interval would contain 95\% of the probability mass,
 which can be interpreted as a 95\% chance of future observations
 falling inside this span. An illustration of credible intervals can be seen in
 Figure~\ref{fig:high-confidence} and Figure~\ref{fig:low-confidence}.
+
+\subsection{Bayesian Model Selection}
+It is possible to have several models for the same data. In such a
+situation it is interesting to select the model that \textit{best} explains the
+data. This is known as a \textit{model selection problem}, and from a
+Bayesian point of view it can be solved by selecting the model with
+the highest posterior probability
+\begin{equation}
+  \label{model-posterior-probability}
+  \model = \argmax_k \frac{\prob(\model_{k} \vert \obs)} 
+  = \prob(\obs \vert \model_{k})\prob(\model_{k})\prob(\model_{k}).
+\end{equation}
+Computing this quantity requires computing the \textit{model evidence}
+\begin{equation}
+  \label{model-evidence}
+  \prob(\obs \vert \model_k) = \int_{\hyperparam} \prob(\obs \vert
+  \model_k, \hyperparam_k) \prob(\hyperparam_k) d\hyperparam_k,
+\end{equation}
+which can be intractable if there is no closed form.
+
 
 \section{Arrival Time Prediction}
 Arrival time prediction is, in a nutshell, the problem of answering
@@ -287,11 +314,13 @@ reasons described in Section~\ref{sec:trajectory-data}.
 \section{Gaussian Processes}
 A GP generalises a multivariate normal distribution, and can be seen
 as a distribution over functions, completely defined by its
-mean function $m(x)$ and covariance function $k(x, x', \hyperparam)$~\cite{Rasmussen-Williams-2006}. 
-Here, $x$ and $x'$ are
-elements in the domain of modeled functions, and $\hyperparam$ a
-vector of hyper-parameters for the covariance function. For any input
-vector $x$, the output $y$ is assumed jointly normally distributed according to
+mean function $m(x)$ and covariance function $k(x, x')$~\cite{Rasmussen-Williams-2006}, 
+where $x$ and $x'$ define elements
+in the domain of modeled functions. In addition, the covariance function $k$ typically
+depend on a vector of hyperparameters $\hyperparam$, which are
+omitted for notational clarity. A GP is a suitable prior when modeling
+a continuous function $y = f(x)$. Assuming that observations are $y_{obs} \sim \mathcal{N}(f,\sigma_n)$, 
+the posterior is also a GP for
 \begin{equation}
   \label{eq:gp}
   y = f(x) \sim \mathcal{N}(\mu(x), \Sigma(x))
@@ -305,21 +334,30 @@ where
   \label{eq:gp-covariance-function}
   \Sigma(x) = K(x, x) + \sigma^{2}_n\textbf{I} - \textbf{K}(x, \textbf{x})\textbf{V}^{-1}{\textbf{K}(x, \textbf{x})}^{T},
 \end{equation}
-and $\textbf{K}$ is the gram matrix with elements $K_{ij} = k(x_i, x_j)$ and $\textbf{V}
-= K(x, x) + \sigma_n^2I$.
-In the context of this thesis, the mean function $m(x)$ can be assumed to be $m(x) = 0$
-without loss of generality, making the covariance function $k(x, x', \hyperparam)$
+and $\textbf{K}$ is the gram matrix with elements $K_{ij} = k(x_i, x_j)$ 
+and $\textbf{V} = K(x, x) + \sigma_n^2I$.
+When using a \textit{stationary} kernel (a kernel that only depends on the
+relative difference of inputs), the mean function $m(x)$ can be assumed to be $m(x) = 0$
+without loss of generality, making the covariance function $k(x, x')$
 the only free parameter. Picking a specific function represents a prior
 belief on how values close in $y$ are related, expressed in $x$. This
 concept is explored in more detail in Section~\ref{sec:kernels-as-priors}.
-Training a GP is typically done using maximum likelihood
-estimation. That is, the GP parameters $\hyperparam$ are optimised to
-maximise the data likelihood. Unfortunately, this is non-convex
-optimisation problem, so
-iterative methods have to be used. The likelihood function is
-non-convex, which introduces a high risk of finding local minimas
-during the optimisation process. Because of this, random restarts are
-typically required to find a good $\hyperparam$.
+Training a GP is done by learning the covariance function parameters $\hyperparam$.
+This can be done using done ML/MAP-estimation, which unfortunately is a non-convex
+optimisation problem, so iterative methods have to be used. To avoid
+local minimas, random restarts are used.
+
+The data likelihood of a GP can be given on log scale by
+\begin{equation}
+  \label{eq:gp-log-likelihood}
+  \begin{split}
+    \log P(y|x) & = -\frac{1}{2}{(y - \mu(x))}^{T}{\Sigma(x)}^{-1}(y - \mu(x)) \\
+    & = -\frac{1}{2}\log{|\Sigma(x)|}+C,
+  \end{split}
+\end{equation}
+where $C$ is constant term, and $\mu(x)$, $\Sigma(x)$ are given by
+equations~\ref{eq:gp-mean-function} and~\ref{eq:gp-covariance-function} 
+respectively.
 
 \subsection{Kernels as Covariance Functions}\label{sec:kernels-as-priors}
 Covariance function formalises a prior belief on the shape of the target
@@ -403,8 +441,29 @@ The structure of the resulting kernels reveals structure in the
 data. For instance, if the resulting kernel contains a RBF component and a periodic
 component, the data is locally correlated, and follow a periodic
 trend. This process can be used to automatically detect structure in
-data, from a cleaverly crafted set of kernels that correspond to
+data from a cleaverly crafted set of kernels that correspond to
 known characteristics.
+
+\section{Sparse Gaussian Processes}
+Computing the posterior of a GP requires inverting the matrix
+$\textbf{V}$ (see
+equations~\ref{eq:gp-covariance-function},~\ref{eq:gp-mean-function}),
+which has time complexity $\mathcal{O}(n^3)$ for matrix dimensions
+$n \times n$. This quickly makes naive implementations of GPs
+intractable for larger data sets. One way to get around this is to use
+a \textit{Sparse Gaussian Process}
+(SGP)~\cite{titsias2009variational}, which approximates the true
+posterior in favour of performance. This is done by finding a set of
+$m < n$ synthetic observations, called \textit{inducing inputs}, such that the
+Kullback-Leibler divergence
+\begin{equation}
+  \label{eq:kl-divergence}
+  D_{KL} (P \vert\vert Q) = \sum_{x \in \mathcal{X}} P(x) \log \left(
+    \frac{Q(x)}{P(x)} \right)
+\end{equation}
+is minimised between the true posterior $P$ and the posterior induced
+by the inducing inputs $Q$. This improves the time complexity of
+computing the posterior to $\mathcal{O}(nm^2)$.
 
 \section{The Equirectangular Map Projection}
 Working with data in latitude-longitude space is tricky, since the two

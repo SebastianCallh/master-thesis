@@ -1,8 +1,9 @@
 \chapter{Data}\label{ch:data}
-The data is provided by Östgötatrafiken, and follows a certain format.
+The data is provided by Östgötatrafiken, and is collected from buses
+and trains in service in the public transport system.
 A single observation comprises a timestamp, GPS position, and a
 specific event type. Depending on the event type,
-additional fields will be present. There are 22 different event types,
+additional fields are present. There are 22 different event types,
 but only four of them are relevant for the thesis project.
 The observation format is illustrated in 
 Figure~\ref{fig:example-observation}, and event specific fields are
@@ -20,10 +21,11 @@ illustrated in Figure~\ref{fig:example-observation}.
   \caption{Format of fields specific to event types used in this
     thesis project.}\label{fig:event-types-format}
 \end{figure}
-All data is sent from either buses or trains. However since the thesis
-project is limited to trains, observations sent from trains are
+All data is sent from either a bus or a train. However since the thesis
+project is limited to buses, observations sent from trains are
 discarded. A summary of the different even types, including when they
-are sent can be seen in Table~\ref{tbl:event-sent}.
+are sent can be seen in Table~\ref{tbl:event-sent}. A more thorough
+exploration of the data 
 
 \begin{table}
   \centering
