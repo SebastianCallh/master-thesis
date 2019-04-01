@@ -345,9 +345,9 @@ concept is explored in more detail in Section~\ref{sec:kernels-as-priors}.
 Training a GP is done by learning the covariance function parameters $\hyperparam$.
 This can be done using done ML/MAP-estimation, which unfortunately is a non-convex
 optimisation problem, so iterative methods have to be used. To avoid
-local minimas, random restarts are used.
-
-The data likelihood of a GP can be given on log scale by
+local minimas, random restarts are used. How good a GP explains data
+can be computed through its data likelihood, which is conveniently
+computed in log scale as 
 \begin{equation}
   \label{eq:gp-log-likelihood}
   \begin{split}
@@ -371,14 +371,6 @@ gives a positive-definite covariance matrix. This is required for it
 to be invertable, which in turn is required to compute the GP posterior. 
 The requirement of positive-definiteness makes intuitive sense, since covariance can not
 be negative. 
-
-Kernels are increadibly flexible, and can be defined for other entities than continuous
-funtions, such as graphs, strings and
-images~\cite{duvenaud2013structure}. However, for this thesis project
-only kernels on continuous functions are considered. Kernels on
-continuous functions are able to express a wide range of prior beliefs, from linearity to symmetry and
-periodicity. Figure~\ref{fig:kernel-priors} illustrates several kernels
-found in the literature on continuous functions together with samples from their priors.
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{figures/kernel-priors-vert}
@@ -386,6 +378,40 @@ found in the literature on continuous functions together with samples from their
     priors. From left to right the kernel functions are RBF (Radial
     Basis Fuction), Matern 32, linear kernel, and periodic kernel.}\label{fig:kernel-priors}
 \end{figure}
+Kernels are increadibly flexible, and can be defined for other entities than continuous
+funtions, such as graphs, strings and
+images~\cite{duvenaud2013structure}. However, for this thesis project
+only kernels on continuous functions are considered. Kernels on
+continuous functions are able to express a wide range of prior beliefs, from linearity to symmetry and
+periodicity. Figure~\ref{fig:kernel-priors} illustrates several kernels
+found in the literature on continuous functions together with samples from their priors.
+
+This thesis project uses RBF, Matern32 and Linear kernels,
+and so they deserve som special attention. Both the RBF and the Matérn32
+are special cases of the more general Matérn kernel
+$C_\mathcal{v}(x, x') = \var
+\frac{2^{1-\mathcal{v}}}{\Gamma(\mathcal{v})} {\left(
+\sqrt{2\mathcal{v}}\frac{d}{\rho}\right)}^\mathcal{v} K_\mathcal{v}
+\left(\sqrt{2\mathcal{v}}\frac{d}{\rho}\right)$
+
+$k_{RBF} = (x, x') = \var \exp \left( - \frac{{(x-x')}^2}{2\ell^2}
+\right)$ and can be seen as a special case of the general Matérn kernel
+
+\begin{center}
+  \begin{tabular}{| l | l | l | l |}
+    \hline
+    Model & Kernel & Parameters \\ \hline
+    $\modelf_{p_x}$ & RBF & $l$, $\var$ \\ \hline
+    $\modelf_{p_y}$ & RBF & $l$, $\var$ \\ \hline
+    $\modelf_{v_x}$ & Matérn32 & $l$, $\var$ \\ \hline
+    $\modelf_{v_y}$ & Matérn32 & $l$, $\var$ \\ \hline
+    $\synchf$   & RBF + Linear & $l$, $\var$ \\ \hline
+    $\predf$    & RBF + Linear & $l$, $\var$
+    \hline
+    \end{tabular}
+\end{center}
+
+
 
 Even though a single kernel captures a lot of priors, it is sometimes
 desireable to express more complicated one. Fortunately,
@@ -423,7 +449,7 @@ observations conditioned on parameters, but this is in general not the
 case in a GP model. However, it has been shown to be a good enough approximation~\cite{duvenaud2013structure}.
 \begin{figure}
   \centering
-  \includegraphics[width=0.75\textwidth]{figures/compound-kernel-search}
+  \includegraphics[width=0.5\textwidth]{figures/compound-kernel-search}
   \caption{Illustration of greedy search over kernel structures under
     multiplication and addition, where the
     expanded nodes are highlighted. Each kernels hyperparameters
