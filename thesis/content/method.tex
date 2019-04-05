@@ -281,7 +281,7 @@ places all trajectories in the same space, allowing
 meaningful comparison.
 
 \subsection{Normalising the Data}\label{sec:normalising-the-data}
-The GPs trained on the data use a constant mean function $\m(x, x') =
+The GPs trained on the data use a constant mean function $m(x, x') =
 0$, which requires normalising the data to have zero mean. It is also
 scaled to be centered around 0, which helps prevent numerical
 instabilities. It is important that the scaling does not deform the
@@ -294,7 +294,7 @@ GPs. Because of this, the scaling is done through
   z_{v_x} = \frac{\obs_{v_x}-\bar{\obs_{v_x}}}{v_{max}} & \\
   z_{v_y} = \frac{\obs_{v_y}-\bar{\obs_{v_y}}}{v_{max}} & \\
   \end{split}
-\end{equation}
+\end{equation*}
 
 where $p_{max} = \max \left( \max_k x^{(k)}_{p_x}, \max_k x^{(k)}_{p_y} \right)$ and 
 $v_{max} \max \left( \max_k x^{(k)}_{v_x}, \max_k x^{(k)}_{v_y}
@@ -507,10 +507,10 @@ pseudo-cluster of individual GP models
   \label{eq:model-log-likelihood}
   \begin{split}
     \log \prob(\stochobs_{k} = x \vert \hat{\hyperparam}_{k}, \model_k)  
-    = & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_x}, \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_y}, \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_x}, \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_y}, \stochobs_{obs} = x).
+    = & \log \prob(\stochobs_{k} = x \vert \combinedf_{p_x}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf_{p_y}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf_{v_x}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf_{v_y}, \stochobs_{obs} = x).
   \end{split}
 \end{equation}
 where the log likelihoods of pseudo-clusters are given
@@ -539,7 +539,7 @@ probabilities in Figure~\ref{fig:state-model-probabilities}.
     the true model solely from velocity. Since all motions
     patterns are recorded on the same road road, they are incredibly
     similar and so the spatial information does not
-    convey any information, as indicated by the noisy plots.}\label{fig:state-model-probabilities}
+    convey much information, as indicated by the noisy plots.}\label{fig:state-model-probabilities}
 \end{figure}
 While predicting arrival time through equation~\ref{eq:arrival-time-probability} gives the correct mean, the
 variance in the predictive distribution 
@@ -553,12 +553,12 @@ the motion pattern uncertainty given by integrating over
 the probability bands of $f_{v_x}$ and $f_{v_y}$
 \begin{equation}
   \label{eq:motion-pattern-variance-integral}
-    \sigma_{mp} = \int_{\synchapsce} 2\sigma_{v_x}(\synchspace) + 2\sigma_{v_x}(\synchspace) d\synchspace
+    \sigma_{mp} = \int_{\synchspace} 2 \sigma_{v_x}(\synchspace) + 2 \sigma_{v_x}(\synchspace) d\synchspace
 \end{equation}
 where $\sigma_{v_x}(\synchspace)$ and $\sigma_{v_y}(\synchspace)$ are
 given by the square root of the pseudo cluster variances from
-equation~\ref{eq:combining-formula-sigma} for velocity models $\combinedf^{(k)}_{v_x}$
-and $\combinedf^{(k)}_{v_y}$.
+equation~\ref{eq:combining-formula-sigma} for velocity models $\combinedf_{v_x}$
+and $\combinedf_{v_y}$.
 
 $$ \int_{\tau_0}^{\tau_1} 2\sigma(\tau) d\tau = \int_{\tau_0}^{\tau_1}
 2\sigma d\tau  = 2\sigma \int_{\tau_0}^{\tau_1} d\tau =
