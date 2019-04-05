@@ -24,26 +24,27 @@ but has major drawbacks:
 
 To make good decisions based of model predictions, it is important to 
 know the prediction uncertainty. Being able to explain how
-a model makes its predictions is also a extremely desirable,
+a model makes its predictions is also extremely desirable,
 since it allows reasoning about why a model made a certain prediction,
-and about how a model would act in previously unseen
-scenarios. 
-To address the first problem, a generative model can be used instead
-of RNNs. However, solving the second problem and achieving a satisfying
+and about how a model would act in previously unseen scenarios. 
+To address the first problem, the RNN model can be replaced with
+a statistical model. However, solving the second problem and achieving a satisfying
 level of explainability requires a much richer model of the data altogether.
 One promising approach to create such a model is \textit{motion
   pattern learning} (or \textit{trajectory learning}), where the goal is to learn a \textit{motion
   pattern} (also known as \textit{activity
   pattern} or \textit{activity model})
 which represents a cluster of individually observed
-trajectories. Motion pattern learning is a problem which spans several
+trajectories. A trajectory would in this setting be observed positions
+and velocities of a public transport vehicle in service. 
+Motion pattern learning is a problem which spans several
 fields, such as computer vision~\cite{Morris2008Sep, Zhang2006Aug,
   Kim2011Nov, Campo2017Aug}, pattern recognition~\cite{Tang2018Aug}, autonomous 
 vehicles~\cite{Goli2018Jun}, and health
 informatics~\cite{Pimentel2013Sep}, and is like arrival time
 prediction an active area of research.
 
-By combining motion pattern learning and generative modeling,
+By combining motion pattern learning and statistical modeling,
 it is possible to make sophisticated predictions, and gain a lot of
 insight on how the system performs. For instance, it would be
 possible to present the probability of arriving on time, in
@@ -52,15 +53,15 @@ The public transport provider could see routes where
 predictions are particularly inaccurate, and analyse the motion
 patterns on those routes, to help explain their poor performance. 
 The motion patterns could be automatically analysed for
-detecting events of interest, such as ``velocity change from 50 to 40
-km/h'', ``stop'', ``queue'', ``emergency break'', to help explain the
+detecting events of interest, such as ``drastic velocity change'', 
+``stand-still'', ``congestion'', ``emergency break'', to help explain the
 bad predictions. They could also be processed for anomaly
 detection, to automatically detect if stations are missed or if public
 transport vehicles stray from the designated route, or stand still for
 a long time.
 Based on the information extracted, the public transport provider
-could make efforts to improve the routes by, for instance, moving routes, moving stops or changing
-time schedules. Motion patterns created after the changes have been
+could make efforts to improve the routes by, moving routes, moving stops or changing
+time schedules, to mention a few things. Motion patterns created after the changes have been
 made could then be compared to previous ones, to see what effects
 the changes had. By iterating this process, continuous improvements
 could be made.
@@ -148,10 +149,13 @@ could be made.
 
 \section{Aim}\label{sec:aim}
 The aim of this thesis project is to model motion patterns of public
-transport vehicles using Gaussian Processes, and use these
+transport vehicles using Gaussian Processes (GPs), and use these
 models to make arrival time predictions with an accuracy that is
 competitive to current state-of-the-art models~\cite{Sinn2012Sep,
-  Gurmu2014, pang2018learning}. Furthermore, the project aims to
+  Gurmu2014, pang2018learning}. In addition, the project aims to
+construct \textit{transition models} which model distributions when
+transitioning from one motion pattern to a consecutive one. 
+Furthermore, the project aims to
 detect specific characteristics from motion patterns, such as ``the
 driver had to emergency break'', or ``the vehicles speed was very slow'', to see if certain characteristics
 are more common in motion patterns where the vehicle is too early or
@@ -162,14 +166,17 @@ detected.
 \section{Research questions}\label{sec:research-questions}
 
 \begin{enumerate}
-\item How can Gaussian processes be used to capture trajectory motion
-  patterns, such that arrival time predictions based on these patterns minimise MAE?
+\item How can GPs be used to capture trajectory motion
+  patterns of public transport vehicles?
 
-\item How can similar trajectories be clustered into motion patterns, 
-  such that arrival time predictions based on these patterns minimise MAE?
+\item How can GPs be used to predict arrival times of motion pattern
+  models with quantifiable uncertainty, while minimising MAE?
+
+\item How can consecutive GP motion pattern models be predicted from 
+  the current, minimising misclassification rate?
   
-\item How can specific events be automatically detected in a
-  motion pattern using compositional kernel search?
+\item How can user-specified events be automatically detected in a
+  motion pattern using composite kernel search?
 
 \item How can outlier motion patterns be detected?
 \end{enumerate}
@@ -197,10 +204,10 @@ detected.
 \section{Delimitations}\label{sec:delimitations}
 The domain of the thesis project is specifically buses in
 Linköping. Data on trains is available, but making the system
-work for trains is out of the scope. The thesis project is limited further
-to arrival time predictions on consecutive
+work for trains is out of scope. The thesis project is limited further
+to motion pattern models and arrival time predictions on consecutive
 but stops. Predictions for bus stops several steps ahead will
-consequently not be considered.
+consequently make use of both motion pattern models and the transition model.
 
 %The data used is provided by Östgötatrafiken AB and is not publicly
 %available. 
@@ -211,3 +218,16 @@ consequently not be considered.
 %normal case, the delimitations need not be justified.
 
 \section{Report Outline}
+The report begins with a background chapter, which explains the
+structure of trajectory data, and gives a brief
+summary of the relevant machine learning techniques and other
+theory. After the background chapter the report 
+acknowledges related work done on trajectory data and arrival time
+predictions in a theory chapter. Following that is a brief data
+chapter which goes into more detail on the structure of tha data used
+in the project. The main contributions of the thesis project is
+adressed in the following methods chapter. In it, a formal derivation
+of the model is presented, and the implementation is described.
+After the methods chapter, the research questions are adressed in the
+results chapter. Finally, the report discusses the implications of
+its contributions before concluding.

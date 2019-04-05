@@ -37,7 +37,7 @@ would not produce trajectories with identical duration and length.
 If two trajectories from the same underlying
 process have the same amount of observations at the same time points,
 they are said to be \textit{synchronised}. 
-Otherwise they are said to be\textit{unsynchronised}.
+Otherwise they are said to be \textit{unsynchronised}.
 
 \section{Supervised Machine Learning}
 Supervised machine learning is the process of training computers programs to
@@ -58,7 +58,7 @@ the \textit{observations}
     \obs_{1}^{N} & \obs_{2}^{N} & \cdots & \obs_{D}^{N} \\
   \end{pmatrix},
 \]
-containing $N$ observations, and the \textit{target vector} $Y = (y_{1},
+containing $N$ observations of dimension $D$, and the \textit{target vector} $Y = (y_{1},
 y_{2}, \dots, y_{N})$. In the first example of predicting temperatures,
 $X$ could contain rows of latitude, longitude and time of year, and $Y$ the
 corresponding recorded temperatures. The
@@ -117,7 +117,7 @@ makes for an increadibly flexible model which \textit{perfectly}
 captures the patterns in the data. However, it is very common for data
 to contain noise and outliers, which do not represent a pattern that
 generalise well. A model that learns these is said to have
-\textit{over-fit}, which is highly undesireable. An illustration of
+\textit{over-fit}, which is highly undesirable. An illustration of
 this can be seen in Figure~\ref{fig:over-fit-example}, together with Figure~\ref{fig:good-fit-example}.
 
 One way of avoiding over-fitting is to use \textit{Bayesian inference}, in which 
@@ -128,15 +128,16 @@ Bayes theorem
 \end{equation}
 is used to estimate $\hyperparam$ from the \textit{posterior}
 distribution $\prob(\hyperparam \vert X)$. 
-To use Bayes rule a \textit{prior} distribution $\prob(\hyperparam)$ is required, which formalises
+To use Bayes theorem a \textit{prior} distribution $\prob(\hyperparam)$ is required, which formalises
 a prior belief about $\hyperparam$ before observing any data. The prior is
 subjective, and different people may pick different priors,
 representing their personal belief about the data. By picking a
 prior corresponding to a not-too-flexible model, over-fitting can be
-avoided. In the case of GPs, this corresponds to a distribution over kernel
-parameter $\hyperparam$ which gives a very wide
-kernel. This implies a high correlation between observations further
-apart, which in turn implies a slowly-varying function.
+avoided. In the case of GPs, this corresponds to a distribution which
+implies places most probability mass on parameters that give 
+a high correlation between observations further
+apart, which in turn implies a slowly-varying function. GPs are
+explained in more detail in Section~\ref{sec:gp}.
 
 The posterior quantifies the uncertainty in $\hyperparam$, but can be computationally
 expensive to work with. Because of this it is sometimes desirable to
@@ -158,15 +159,15 @@ model $\model$ \textit{without} fitting it to data, avoiding the
 problem of over-fitting entirely. This is done by maximising the
 \textit{marginal likelihood}
 \begin{equation}
-  \label{eq:marginal-likelihod}
-  \prob(\obs \vert \model) = \int \prob(\obs \vert \hyperparam,
-  \model) \prob(\hyperparam \vert \model) \prob(\hyperparam) d\hyperparam
+  \label{eq:marginal-likelihood}
+  \prob(\obs \vert \model) = 
+  \int \prob(\obs \vert \hyperparam,\model) \prob(\hyperparam \vert \model) d\hyperparam
 \end{equation}
 which considers both the uncertainty in $\obs$ and
 $\hyperparam$. However, the marginal likelihood is very sensitive to
 the choice of prior, so if the prior is not selected carefully this
 way of estimating $\hyperparam$ will produce a bad model. The integral
-can also be intractable to compute.
+can also be difficult to compute.
 
 \subsection{Making Predictions}
 When the model is trained, it can be used to make predictions
@@ -208,43 +209,51 @@ falling inside this span. An illustration of credible intervals can be seen in
 Figure~\ref{fig:high-confidence} and Figure~\ref{fig:low-confidence}.
 
 \subsection{Bayesian Model Selection}
-It is possible to have several models for the same data. In such a
+It is quite possible to have several models for the same data. In such a
 situation it is interesting to select the model that \textit{best} explains the
 data. This is known as a \textit{model selection problem}, and from a
 Bayesian point of view it can be solved by selecting the model with
 the highest posterior probability
 \begin{equation}
   \label{model-posterior-probability}
-  \model = \argmax_k \frac{\prob(\model_{k} \vert \obs)} 
-  = \prob(\obs \vert \model_{k})\prob(\model_{k})\prob(\model_{k}).
+  \model 
+  = \argmax_k \prob(\model_{k} \vert \obs) 
+  \propto \argmax_k \prob(\obs \vert \model_{k})\prob(\model_{k}).
 \end{equation}
-Computing this quantity requires computing the \textit{model evidence}
-\begin{equation}
-  \label{model-evidence}
-  \prob(\obs \vert \model_k) = \int_{\hyperparam} \prob(\obs \vert
-  \model_k, \hyperparam_k) \prob(\hyperparam_k) d\hyperparam_k,
-\end{equation}
-which can be intractable if there is no closed form.
-
+Computing this quantity requires computing the model marginal
+likelihood given by equation~\ref{eq:marginal-likelihood}, which is
+often refered to as the \textit{model evidence} in
+the context of model selection.
 
 \section{Arrival Time Prediction}
-Arrival time prediction is, in a nutshell, the problem of answering
-the question ``When does the bus arrive?''. When viewed as a machine
-learning problem, the goal is to
-learn a function $\arrtime = f(\obs)$ for arrival time $\arrtime$ and 
-state vector $\obs$, which
-contains information on the current state of the world. For instance, it
-could contain the position of a bus and the time of day.
+Arrival time prediction is in the context of machine learning on trajectory 
+data the problem of predicting when a trajectory ends. 
+That is, the goal is to learn a function $\arrtime = f(\newobs)$ for arrival time $\arrtime$ and 
+observation $\newobs$, which contains information on the current
+trajectory state. For instance, it
+could contain the position, velocity and the time of day.
 
 \subsection{Prediction Evaluation}
-The \textit{Mean Absolute Error} (MAE), defined as
+Two complementary ways of evaluating how good a prediction is are the metrics
+\textit{Mean Absolute Error} (MAE) and \textit{Mean Absolute Percentage
+  Error} (MAPE), defined for the true value $\hat{x}$ and predicted
+value $x$ as 
 \begin{equation}
   \label{eq:mae}
-  MAE(\hat{t}, t) = \frac{1}{n}\sum_{i=1}^{n}{\vert \hat{t} - t \vert},
+  MAE(\hat{x}, x) = \frac{1}{n}\sum_{i=1}^{n}{\vert \hat{x} - x \vert},
 \end{equation}
-for true value $\hat{t}$, provides a natural interpretation as 
+and
+\begin{equation}
+  \label{eq:mape}
+  MAPE(\hat{x}, x) = \frac{1}{n}\sum_{i=1}^{n} \vert \frac{\hat{x} - x}{\hat{x}} \vert
+\end{equation}
+respectively. 
+MAE provides a natural interpretation as 
 ``the average of the total error'' which is a relevant
-and easy-to-understand quantity~\cite{willmott2005advantages}.
+and easy-to-understand quantity~\cite{willmott2005advantages}, 
+while MAPE calculates a relative
+error~\cite{Armstrong1992Jun}, which is unaffected by the
+magnitude. 
 
 %% Two complementary ways of evaluating how good a prediction is are the metrics
 %%  (MAE) and \textit{Mean Absolute Percentage
@@ -303,15 +312,15 @@ the name motion pattern learning will be used instead.
   \centering
   \includegraphics[width=0.7\textwidth]{figures/motion-pattern-example}
   \caption{Synthetic data showing two motion patterns with two trajectories in
-    each. Trajectory 2 and 3 belong to one motion pattern and
-    Trajectory 1 and 4 belong to a second motion pattern.}\label{fig:motion-pattern-example}
+    each. $\traj_1$ and $\traj_2$ belong to one motion pattern and
+    $\traj_0$ and $\traj_3$ belong to a second motion pattern.}\label{fig:motion-pattern-example}
 \end{figure}
 Motion pattern learning has a natural interpretation as a
 clustering problem, but clustering trajectories is difficult,
 since it is hard to define a similarity metric for trajectories for
 reasons described in Section~\ref{sec:trajectory-data}.
 
-\section{Gaussian Processes}
+\section{Gaussian Processes}\label{sec:gp}
 A GP generalises a multivariate normal distribution, and can be seen
 as a distribution over functions, completely defined by its
 mean function $m(x)$ and covariance function $k(x, x')$~\cite{Rasmussen-Williams-2006}, 
@@ -345,7 +354,7 @@ concept is explored in more detail in Section~\ref{sec:kernels-as-priors}.
 Training a GP is done by learning the covariance function parameters $\hyperparam$.
 This can be done using done ML/MAP-estimation, which unfortunately is a non-convex
 optimisation problem, so iterative methods have to be used. To avoid
-local minimas, random restarts are used. How good a GP explains data
+local minimas, random restarts are typically used. How good a GP explains data
 can be computed through its data likelihood, which is conveniently
 computed in log scale as 
 \begin{equation}
@@ -368,8 +377,8 @@ a GP, a class of functions known as \textit{kernels} are typically
 used, since they have useful properties for expressing covariance. In
 particular, kernels are positive-definite functions, which in turn
 gives a positive-definite covariance matrix. This is required for it
-to be invertable, which in turn is required to compute the GP posterior. 
-The requirement of positive-definiteness makes intuitive sense, since covariance can not
+to be invertable, which in turn is required to compute the GP
+posterior. The requirement of positive-definiteness makes intuitive sense, since covariance can not
 be negative. 
 \begin{figure}
   \centering
@@ -386,32 +395,34 @@ continuous functions are able to express a wide range of prior beliefs, from lin
 periodicity. Figure~\ref{fig:kernel-priors} illustrates several kernels
 found in the literature on continuous functions together with samples from their priors.
 
-This thesis project uses RBF, Matern32 and Linear kernels,
+This thesis project uses RBF, Matérn32 and Linear kernels,
 and so they deserve som special attention. Both the RBF and the Matérn32
-are special cases of the more general Matérn kernel
-$C_\mathcal{v}(x, x') = \var
-\frac{2^{1-\mathcal{v}}}{\Gamma(\mathcal{v})} {\left(
-\sqrt{2\mathcal{v}}\frac{d}{\rho}\right)}^\mathcal{v} K_\mathcal{v}
-\left(\sqrt{2\mathcal{v}}\frac{d}{\rho}\right)$
-
-$k_{RBF} = (x, x') = \var \exp \left( - \frac{{(x-x')}^2}{2\ell^2}
-\right)$ and can be seen as a special case of the general Matérn kernel
-
-\begin{center}
-  \begin{tabular}{| l | l | l | l |}
-    \hline
-    Model & Kernel & Parameters \\ \hline
-    $\modelf_{p_x}$ & RBF & $l$, $\var$ \\ \hline
-    $\modelf_{p_y}$ & RBF & $l$, $\var$ \\ \hline
-    $\modelf_{v_x}$ & Matérn32 & $l$, $\var$ \\ \hline
-    $\modelf_{v_y}$ & Matérn32 & $l$, $\var$ \\ \hline
-    $\synchf$   & RBF + Linear & $l$, $\var$ \\ \hline
-    $\predf$    & RBF + Linear & $l$, $\var$
-    \hline
-    \end{tabular}
-\end{center}
-
-
+are special cases of the more general Matérn kernel, defined by 
+\begin{equation}
+  \label{eq:matern-kernel}
+  \text{Mat}_\nu(x, x') = \var
+  \frac{2^{1-\nu}}{\Gamma(\nu)} {\left(
+    \sqrt{2\nu}\frac{d}{\ell}\right)}^\nu K_\nu
+  \left(\sqrt{2\nu
+  }\frac{d}{\ell}\right).
+\end{equation}
+ 
+The Matérn32 is simply given by equation~\ref{eq:matern-kernel}
+parameterised by $\nu = 3/2$ and RBF is recovered through
+\begin{equation}
+  \lim_{\nu \to \infty} \text{Mat}_\nu(x, x') = 
+\var \exp \left(-\frac{{(x-x')}^2}{2\ell^2}\right).
+\end{equation}
+The parameter $\nu$ determines how smooth the function is, where a larger $\nu$ gives a
+smoother function. The Matérn32 consequently models functions that
+varies more quickly than those modeled by the RBF, as illustrated in
+Figure~\ref{fig:kernel-priors}. The final kernel
+used is the linear one, which is given by 
+\begin{equation}
+  k_{Lin}(x, x') = \var_b + \var_v(x-c)(x'-c),
+\end{equation}
+where $\var_b$ controls the bias, or where the function intersects the
+$y$-axis and $c$ defines a point in $x$ which all functions intersect.
 
 Even though a single kernel captures a lot of priors, it is sometimes
 desireable to express more complicated one. Fortunately,
@@ -432,8 +443,8 @@ the concept of compound kernels.
 \subsection{Structure Discovery Using Gaussian Processes}
 Structure discovery is the problem of automatically learning the
 structure of data. By creating kernels for specific characteristics
-and combining them in a way that maximises the marginal likelihood, it
-is possible to detect said characteristics, based on the combination
+and combining them in a way that maximises the likelihood of the data, it
+is possible to detect said characteristics using GPs, based on the combination
 of kernels~\cite{duvenaud2013structure}.
 
 There are infintely many ways to construct compound kernels, and some

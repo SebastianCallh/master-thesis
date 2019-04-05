@@ -187,20 +187,21 @@ simplified to
 
 %extending the synchronisation model to the \textit{trajectory model}
 %$\model_{k} = (\modelf_{k}, \synchf_{k}, \predf_{k})$, illustrated in Figure~\ref{fig:trajectory-model}.
-\begin{figure}
-  \centering
-  \includegraphics[scale=1.5]{trajectory-model}
-  \caption{An illustration of the trajectory model, which models
-    current state $\statespace$ and time left $\arrtime$ as functions of
-    progress $\synchspace$. New trajectories are observed in 
-    $\statespace = (p_x, p_y, v_x, v_y)$, containing position and velocity. 
-    $p$ denotes orthogonal projection onto the subspace $\posspace = (p_x,
-    p_y)$, which is the domain of $\synchf_{k}$. Via $p$,
-    $\synchf_{k}$ gives the progression $\synchspace$ of an
-    observation. The projection onto a trajectory for some $\synchspace$ is given
-    by $\modelf_{k}$, which is used to compute the data
-    likelihood. Finally, arrival time predictions are made through $\predf_{k}$.}\label{fig:trajectory-model}
-\end{figure}
+%% \begin{figure}
+%%   \centering
+%%   \includegraphics[scale=1.5]{trajectory-model}
+%%   \caption{An illustration of the trajectory model, which models
+%%     current state $\statespace$ and time left $\arrtime$ as functions of
+%%     progress $\synchspace$. New trajectories are observed in 
+%%     $\statespace = (p_x, p_y, v_x, v_y)$, containing position and velocity. 
+%%     $p$ denotes orthogonal projection onto the subspace $\posspace = (p_x,
+%%     p_y)$, which is the domain of $\synchf_{k}$. Via $p$,
+%%     $\synchf_{k}$ gives the progression $\synchspace$ of an
+%%     observation. The projection onto a trajectory for some $\synchspace$ is given
+%%     by $\modelf_{k}$, which is used to compute the data
+%%     likelihood. Finally, arrival time predictions are made through $\predf_{k}$.}\label{fig:trajectory-model}
+%% \end{figure}
+
 
 %An illustration of the mappings involved when synchronising
 %    trajectories. 
@@ -281,54 +282,62 @@ meaningful comparison.
 
 \subsection{Normalising the Data}\label{sec:normalising-the-data}
 The GPs trained on the data use a constant mean function $\m(x, x') =
-0$, which requires normalising the data to have zero mean. It is also scaled to
-have unit variance, which helps avoid numerical instabilities.
-An alternative to this is to let the GPs have a constant mean function
+0$, which requires normalising the data to have zero mean. It is also
+scaled to be centered around 0, which helps prevent numerical
+instabilities. It is important that the scaling does not deform the
+Euclidian space of the data, which would violate assumptions made by
+GPs. Because of this, the scaling is done through
+\begin{equation*}
+  \begin{split}
+  z_{p_x} = \frac{\obs_{p_x}-\bar{\obs_{p_x}}}{p_{max}} & \\
+  z_{p_y} = \frac{\obs_{p_y}-\bar{\obs_{p_y}}}{p_{max}} & \\
+  z_{v_x} = \frac{\obs_{v_x}-\bar{\obs_{v_x}}}{v_{max}} & \\
+  z_{v_y} = \frac{\obs_{v_y}-\bar{\obs_{v_y}}}{v_{max}} & \\
+  \end{split}
+\end{equation}
+
+where $p_{max} = \max \left( \max_k x^{(k)}_{p_x}, \max_k x^{(k)}_{p_y} \right)$ and 
+$v_{max} \max \left( \max_k x^{(k)}_{v_x}, \max_k x^{(k)}_{v_y}
+\right)$. That is, the observations are scaled in position by the largest
+position observed, and likewise in velocity. To avoid introducing
+additional notation, normalised observations will also be referred to as
+$\obs$. However, the normalising transformation is bijective, and the
+underlying mathematics is sound for both normalised and unnormalised  observations.
+
+
+An alternative to normalising the observations is to let the GPs have a constant mean function
 which value is learned from the data. However, this would add another
 parameter to the training process, so the described method of normalisation
 is preferred.
 
-\subsection{Kernel Selection and Prior Elicitation}
-The choice of kernels and other priors greatly impact model
-performance, and are consequently important parts of the model specification.
-Before adressing the training of the models, the choice of kernels and
-hyperparameters need to be 
-TODO: write on all different kernels. Kolla om vi ska ha matern52 på position
-kolla parametrar för matern52. 
-\begin{center}
-    \begin{tabular}{| l | l | l | l |}
+\subsection{Kernel Selection}
+The choice of kernels greatly impact the models
+capabilities, and are very important parts of the model specification.
+The kernels chosen for the different models are described in
+Table~\ref{tbl:model-kernels}. Since velocities change
+quickly, Matérn32 is used instead of RBF to model $\modelf_{v_x}$
+and $\modelf_{v_y}$. The Linear additions for $\synchf$ and
+$\predf$ are motivated by the fact that time is linear, and by the
+assumption that a bus line should show
+a spatial linear trend.
+
+\begin{table}[H]
+  \centering
+  \caption{Kernels for the different models.}\label{tbl:model-kernels}
+  \begin{tabular}{| l | l |}
     \hline
-    Model & Kernel & Parameters \\ \hline
-    $\modelf_{p_x}$ & Matern52 &  $l$, $\var$ \\ \hline
-    $\modelf_{p_y}$ & Matern52 &  $l$, $\var$ \\ \hline
-    $\modelf_{v_x}$ & Matern52 &  $l$, $\var$ \\ \hline
-    $\modelf_{v_y}$ & Matern52 &  $l$, $\var$ \\ \hline
-    $\g$           & Matern52 + Linear & $l$, $\var$ \\ \hline
-    $\h$           & Matern52 + Linear & $l$, $\var$
+    Model & Kernel \\ \hline
+    $\modelf_{p_x}$ & RBF \\ \hline
+    $\modelf_{p_y}$ & RBF  \\ \hline
+    $\modelf_{v_x}$ & Matèrn32  \\ \hline
+    $\modelf_{v_y}$ & Matèrn32 \\ \hline
+    $\synchf$     & RBF + Linear  \\ \hline
+    $\predf$      & RBF + Linear \\
     \hline
     \end{tabular}
-\end{center}
+\end{table}
 
-Learning the model through MAP-estimation require prior distributions
-for the hyperparameters. There are two hyperparemeters for each
-trajectory, the lengthscale $l$ and the variance $\var$. 
-$\obsnoise$ is assumed to be static, and $l$ is 
-estimated from 100 trajectories which are set
-aside solely for this purpose; the model is never presented with these
-trajectories during training or testing.
 
-The $l$ for each motion pattern model is modeled as 
-$l \sim \Gamma(\alpha, \beta)$ where parameters $\alpha$ and $\beta$
-are ML-estimated using the set-aside trajectories. A Gamma
-distribution is used since it
-is a convenient way of enforcing a positive lengthscale due to it
-having no negative support. The learned lengthscales and the resulting
-priors are illustrated in Figure~\ref{fig:estimated-lengthscales}.
-\begin{figure}
-  \includegraphics[scale=0.48,width=\textwidth]{estimated-lengthscales}
-  \caption{Histogram of fitted lengthscales and the priors estimated
-    from them.}\label{fig:estimated-lengthscales}
-\end{figure}
 
 \subsection{Learning the Synchronisation Model}
 The synchronisation model $\synchf_{k}$ have some critical properties
@@ -352,52 +361,67 @@ avoid this problem, a technique called \textit{stop compression} is used.
 
 $\synchf_{k}$ is bivariate and evaluating its posterior is expensive. To make
 it more efficient, $\synchf_{k}$ is learned using a SPG with $0.3N$ inducing inputs, 
-where $N$ is the number of trajectory observations.
+where $N$ is the number of trajectory observations. Event though it is
+approximated, $\synchf_{k}$ can model complex trajectories as seen in
+Figure~\ref{fig:seg-9-observations} and Figure~\ref{fig:seg-9-g}.
 
 \subsubsection{Enforcing Orthogonality}\label{sec:data-augmentation}
 For reasons previously described, $\synchf_{k}$ should be monotonically increasing in
 the direction of progression and stationary orthogonal to it.
 To enforce learning such a function, synthetic data is generated by 
-stepping through $\modelf_{k}(\synchspace)$ for $\synchspace = 0.0,
-\delta, 2\delta, \dots, 1.0-\delta, 1.0$ and a small $\delta > 0$. For each
-$\synchspace$ a Normal distribution is placed orthogonal to
-gradient. From this distribution a number of observations are drawn with the same 
-$\synchspace$, forcing a stationary function value. This process is illustrated in
-Figure~\ref{fig:traj-without-support-data} and
-Figure~\ref{fig:traj-with-support-data}. 
+duplicating the observations orthogonally to progression. This process is illustrated in
+Figure~\ref{fig:traj-without-support-data} and Figure~\ref{fig:traj-with-support-data}. 
 \begin{figure}
   \begin{minipage}{.46\textwidth}
-    \includegraphics[scale=0.48,width=\textwidth]{traj-without-support-data2}
+    \includegraphics[scale=0.48,width=\textwidth]{data-augmentation-before}
     \caption{Spatial progression of a trajectory
-      before data augmentation.}\label{fig:traj-without-support-data}
+      before data augmentation. Color indicate $\synchspace$ from
+      dark ($\synchspace=0.0$) to bright ($\synchspace=1.0$).}\label{fig:traj-without-support-data}
   \end{minipage}
   \hspace{5pt}
   \begin{minipage}{.46\textwidth}
-    \includegraphics[scale=0.5,width=\textwidth]{traj-with-support-data2}
+    \includegraphics[scale=0.5,width=\textwidth]{data-augmentation-after}
     \caption{Spatial progression of a trajectory
-      after data augmentation. }\label{fig:traj-with-support-data}
+      after data augmentation. Color indicate $\synchspace$ from
+      dark ($\synchspace=0.0$) to bright ($\synchspace=1.0$).}\label{fig:traj-with-support-data}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.48,width=\textwidth]{trajectory-observation-example}
+    \caption{Spatial observations of a segment. Colour indicate values
+      of $\tau$, from brightdark ($\synchspace=0.0$) to bright ($\synchspace=1.0$).}\label{fig:seg-9-observations}
+  \end{minipage}
+  \hspace{5pt}
+  \begin{minipage}{.46\textwidth}
+    \includegraphics[scale=0.5,width=\textwidth]{synch-model-example}
+    \caption{The learned synchronisation model $\synchf$. Colour indicate values
+      of $\tau$, from brightdark ($\synchspace=0.0$) to bright ($\synchspace=1.0$).}\label{fig:seg-9-g}
   \end{minipage}
 \end{figure}
 
 \subsubsection{Handling Stand-stills}\label{sec:stop-compression}
-Stand-stills causes an uneven spatial distribution of data. This i
+Stand-stills causes an uneven spatial distribution of data. This is
 prevented using stop compression, which aggregates observations in close proximity into a
 single observation through averaging. Observations within a radius of
 $\epsilon$ are clustered into a single observation with the mean value of
 the clustered observations. An example of this is seen
-Figure~\ref{fig:stop-compression-before} and Figure~\ref{fig:stop-compression-after}.
+Figure~\ref{fig:stop-compression-before} and
+Figure~\ref{fig:stop-compression-after}. During evaluation $\epsilon=4$ metres was used. 
 \begin{figure}
   \begin{minipage}{.46\textwidth}
     \includegraphics[scale=0.48,width=\textwidth]{stop-compression-before}
-    \caption{Trajectory before stop compression. Several observations
-      are very close spatially, but the data is
-      approximately uniformly distributed temporally. }\label{fig:stop-compression-before}
+    \caption{Trajectory before stop compression. Observations are 
+      approximately uniformly distributed temporally, but form a cluster
+      much denser than the desired $\epsilon$ spatialy. }\label{fig:stop-compression-before}
   \end{minipage}
   \hspace{5pt} 
   \begin{minipage}{.46\textwidth}
     \includegraphics[scale=0.5,width=\textwidth]{stop-compression-after}
     \caption{Spatial progression of a trajectory
-      after stop compression. The data is
+      after stop compression. Data which within a radius of $\epsilon$
+      has been compressed so the resulting data is
       approximately uniformly distributed spatially.}\label{fig:stop-compression-after}
   \end{minipage}
 \end{figure}
@@ -437,7 +461,7 @@ pseudo-cluster parameters $\mu(\synchslice), \sigma^2(\synchslice)$ are given by
 with uniform weights $N$ over two copies of $\modelf$, offset by
 $\delta$ orthogonal to $\tau$. $\delta$ is a user-specified parameter
 which controls what distance the model should consider close when
-comparing trajectories. As is illustrated in Figure~\ref{fig:pseudo-cluster-before} and
+comparing trajectories. During evaluation $\delta=<TODO>$ was used. As is illustrated in Figure~\ref{fig:pseudo-cluster-before} and
 Figure~\ref{fig:pseudo-cluster-after}, this creates a larger variance, 
 which enables meaningful comparison of models.
 \begin{figure}
@@ -472,8 +496,8 @@ selection with a uniform prior over all learned models
   \prob(\model_k) \propto
   \prob(\stochobs = \newobs \vert \hat{\hyperparam}_{k}, \model_k),
 \end{equation}
-where $\hat{\hyperparams}_{k}$ are the MAP-estimated
-hyper-parameters of corresponding model $\model_{k}$. 
+where $\hat{\hyperparam}_{k}$ are the ML-estimated
+hyper-parameters of corresponding model $\model_{k}$.
 Given the uniform prior, the model which maximises the likelihood is
 selected, which is equivalent with the model that maximises the log
 likelihood, since the log function is monotonically increasing. The
@@ -482,25 +506,20 @@ pseudo-cluster of individual GP models
 \begin{equation}
   \label{eq:model-log-likelihood}
   \begin{split}
-    \log \prob(\stochobs_{k} = x \vert \hat{\hyperparam}_{k}, \model_k)  = &
-    \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_x},
-    \hat{\hyperparam}_{p_x}, \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_y}, \hat{\hyperparam}_{p_y},
-    \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_x}, \hat{\hyperparam}_{v_x},
-    \stochobs_{obs} = x) \\
-    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_y}, \hat{\hyperparam}_{v_y}, \stochobs_{obs} = x)
+    \log \prob(\stochobs_{k} = x \vert \hat{\hyperparam}_{k}, \model_k)  
+    = & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_x}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{p_y}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_x}, \stochobs_{obs} = x) \\
+    + & \log \prob(\stochobs_{k} = x \vert \combinedf^{(k)}_{v_y}, \stochobs_{obs} = x).
   \end{split}
 \end{equation}
-where $\hat{\hyperparam}$ with subscripts indicate the MAP-estimated
-parameters of the particular model, implicitly belonging to the
-corresponding model. An illustration of model probabilities can be
-seen in Figure~\ref{fig:model-probability}.
-The log likelihoods of pseudo-cluster are given
-by equation~\ref{eq:gp-log-likelihood}, since they are modeled as
-GPs. Trajectory models that are presented with new
-observations are illustrated in Figure~\ref{fig:state-model}, and the corresponding model
-probabilities can be seen in Figure~\ref{fig:state-model-probabilities}.
+where the log likelihoods of pseudo-clusters are given
+by equation~\ref{eq:gp-log-likelihood}. An illustration of model
+probabilities computed in this way can be
+seen in Figure~\ref{fig:model-probability}. Figure~\ref{fig:state-model} 
+shows trajectory models that are presented with new
+observations, together with the corresponding model
+probabilities in Figure~\ref{fig:state-model-probabilities}.
 \begin{figure}
   \centering
   \includegraphics[scale=0.6]{model-probability}
@@ -509,12 +528,12 @@ probabilities can be seen in Figure~\ref{fig:state-model-probabilities}.
     solid line.}\label{fig:model-probability}
 \end{figure}
 \begin{figure}
-  \includegraphics[scale=0.3,width=\textwidth]{state-model}
+  \includegraphics[scale=0.3,width=\textwidth]{model-example}
   \caption{Plots of state models mean functions
     and probability bands for different $\model_{k}$.}\label{fig:state-model}
 \end{figure}
 \begin{figure}
-  \includegraphics[scale=0.3,width=\textwidth]{state-model-probabilities}
+  \includegraphics[scale=0.3,width=\textwidth]{model-probabilities}
   \caption{Plots of the model probabilities for each state model. The model
     places high probability on the true model. It is able to identify
     the true model solely from velocity. Since all motions
@@ -522,8 +541,7 @@ probabilities can be seen in Figure~\ref{fig:state-model-probabilities}.
     similar and so the spatial information does not
     convey any information, as indicated by the noisy plots.}\label{fig:state-model-probabilities}
 \end{figure}
-While a prediction made through
-equation~\ref{eq:arrival-time-probability} have the correct mean, the
+While predicting arrival time through equation~\ref{eq:arrival-time-probability} gives the correct mean, the
 variance in the predictive distribution 
 $\arrtime_{k} \sim \mathcal{N}(\mu_{\predf_k}, \sigma_{\predf_k})$
 only considers the uncertainty in $\predf_k$. This is very optimistic,
@@ -535,15 +553,16 @@ the motion pattern uncertainty given by integrating over
 the probability bands of $f_{v_x}$ and $f_{v_y}$
 \begin{equation}
   \label{eq:motion-pattern-variance-integral}
-    \sigma_{mp} = \int_{\synchapsce} 2\sigma_{v_x}(\synchspace) d\synchspace
-    + \int_{\synchapsce} 2\sigma_{v_x}(\synchspace) d\synchspace
+    \sigma_{mp} = \int_{\synchapsce} 2\sigma_{v_x}(\synchspace) + 2\sigma_{v_x}(\synchspace) d\synchspace
 \end{equation}
 where $\sigma_{v_x}(\synchspace)$ and $\sigma_{v_y}(\synchspace)$ are
 given by the square root of the pseudo cluster variances from
 equation~\ref{eq:combining-formula-sigma} for velocity models $\combinedf^{(k)}_{v_x}$
 and $\combinedf^{(k)}_{v_y}$.
 
-
+$$ \int_{\tau_0}^{\tau_1} 2\sigma(\tau) d\tau = \int_{\tau_0}^{\tau_1}
+2\sigma d\tau  = 2\sigma \int_{\tau_0}^{\tau_1} d\tau =
+2\sigma(\tau_1 - \tau_0)$$
 %% The arrival time predictions are modeled as a Mixture of Gaussian
 %% Processes (MoGP), where each previously observed model $\model_{k}$ induce a component. The
 %% model predicts remaining time until arrival $\arrtime$ through the mixture
@@ -583,11 +602,6 @@ and $\combinedf^{(k)}_{v_y}$.
 \subsection{Event Detection}
 The problem of detecting events have not yet been investigated.
 
-\section{System Simplifications and Approximations}
-Due to computational reasons, several simplifications and
-approximations are made to evaluate the models efficiently.
-
-
 % A motion pattern representing a set of trajectory GPs can be though of as a GP as well. 
 % This GP would capture the mean function of all
 % underlying GPs, and their total variance. However, the implementation
@@ -620,15 +634,20 @@ approximations are made to evaluate the models efficiently.
 %   \end{minipage}
 % \end{figure}
 
-\section{System Implementation}
+\section{System Implementation Details}
 This section describes the implementation details of the system and
-how data was processed. The implementation was done in Python, using the GPy
-framework~\cite{gpy2014} for GP computations and the data base
-PostgreSQL~\cite{BibEntry2019Feb} for storing trained GPs.
+how data was processed. The GP implementations were done in Python, using the GPy
+framework~\cite{gpy2014}, which uses the BFGS algorithm~\cite{fletcher2013practical} for
+optimising $\hyperparam$. The database
+PostgreSQL~\cite{BibEntry2019Feb} was used for storing trained GPs.
 
-data sanitation
-
-pipeline with figure?
+The integrals in equation~\ref{eq:motion-pattern-variance-integral}
+were computed by approximating them by <inte klar här, osäker>
+%% \begin{equation}
+%%   \sigma_{mp} \approx \sum_{\synchspace=0.0}^{1.0}
+%%   \left(2\sigma_{v_x}(\synchspace) + 2\sigma_{v_y}(\synchspace)\right)
+%% \end{equation}
+%%  with a step size of $0.02$.
 
 
 

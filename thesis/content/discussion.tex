@@ -19,8 +19,53 @@ mängden data som används, inducing inputs
 % literature review, or is everything as one would theoretically
 % expect?
 
-% \section{Method}
-% \label{sec:discussion-method}
+\section{Method}\label{sec:discussion-method}
+This section addresses the method used and its flaws.
+
+\subsection{Maximum Likelihood Estimation}
+ML-estimated models are typically prone to overfitting, and attempts were made to
+MAP-estimate them. The kernel parameters were modeled as 
+$\ell \sim \Gamma(\alpha_\ell, \beta_\ell)$, $\var \sim \Gamma(\alpha_\var, \beta_\var)$, 
+$\var_b \sim \Gamma(\alpha_{\var_b}, \beta_{\var_b})$, and were
+estimated by fitting distributions to populations of ML-estimated parameters of 100 trajectories set
+aside solely for this purpose; the models were never presented with these
+trajectories during training or testing. An illustration of 
+the parameters estimation can be seen in Figure~\ref{fig:seg-state-model-priors}.
+\begin{figure}
+  \includegraphics[scale=0.48,width=\textwidth]{seg-1-state-model-priors}
+  \caption{Plots of estimated prior parameters from state models for
+    segmeent one (Parameters of $\synchf$ and $\predf$ are not
+    shown). The histograms show the parameter distributions from
+    the learned trajectory models, and the Gamma distributions show
+    the estimated priors.}\label{fig:seg-state-model-priors}
+\end{figure}
+Using MAP-estimation did however have a much greater regularising
+effect than desired. Since the project considered single-trajectory
+motion patterns the characteristics of a single trajectory was
+paramount to be able to identify it. Paradoxically, this means that
+over-fitting was \textit{good} for the model; regularisation caused
+the differences in models to be ``smoothed out'', making it hard for
+the model to tell them apart.
+
+\subsection{Low Sample Sizes}
+The project did use a fairly low amount of trajectories for its
+evaluation. The simple reason for this is time constraints; evaluating
+the model performance on only 50 trained models took over two hours.
+Attempts were made to use SGPs for all functions, which would have made
+computing model posteriors much faster and enabled training and
+evaluating on a larger data set, but this had a
+large regularising effect akin to MAP-estimation, as illustrated in Figure~\ref{fig:inducing-inputs-regularisation}.
+
+\subsection{Unrepresentative Samples}
+Using only data from a single bus line is of course hardly
+representative of the greater population of bus lines. <inte
+klar. kanske mät lite olika saker för olika buslinjer för att jämföra>
+
+\begin{figure}
+  \includegraphics[scale=0.48,width=\textwidth]{seg-1-state-model-priors}
+  \caption{PLACEHOLDER - will describe regularisation induced by
+    inducing inputs.}\label{fig:inducing-inputs-regularisation}
+\end{figure}
 
 % This is where the applied method is discussed and criticized.
 % Taking a self-critical stance to the method used is an
