@@ -9,7 +9,9 @@ from scipy.stats import norm
 
 COLOR_MAP_NAME = 'tab20'
 COLOR_MAP = plt.cm.get_cmap(COLOR_MAP_NAME)
+THESIS_PLOT_PATH = "C:\\Users\\sebas\\Documents\\plugg\\msc\\thesis\\figures"
 
+FONT_SIZE = 16
 
 def default_color(i):
     cols = COLOR_MAP.colors

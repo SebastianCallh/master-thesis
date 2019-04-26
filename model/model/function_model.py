@@ -1,11 +1,11 @@
-from typing import NamedTuple
+from typing import NamedTuple, Tuple
 from numpy import ndarray
 import numpy as np
 import GPy
 
-from .plotting import grid_for, default_color
-
-GP = GPy.models.GPRegression
+GP = GPy.models.SparseGPRegression
+GPR = 'gpr'
+SGPR = 'sgpr'
 
 
 class FunctionModelPriors(NamedTuple):
@@ -15,7 +15,7 @@ class FunctionModelPriors(NamedTuple):
 
 
 def gamma_prior(mean, var):
-    return GPy.priors.Gamma.from_EV(mean, var)
+    return GPy.priors.Gamma(mean, var)
 
 
 class FunctionModel(NamedTuple):
@@ -23,16 +23,50 @@ class FunctionModel(NamedTuple):
     model: GP
 
 
-def predict(func: FunctionModel, X: ndarray) -> ndarray:
+def predict(func: FunctionModel, X: ndarray) -> Tuple[ndarray, ndarray]:
     return func.model.predict(X)
 
 
+def learn_sparse(
+        X: ndarray, Y:ndarray, kernel,
+        num_inducing: int,
+        sigma_n: float,
+        n_restarts) -> FunctionModel:
+
+    m = GPy.models.SparseGPRegression(
+        X, Y, kernel,
+        num_inducing=num_inducing,
+        normalizer=False
+    )
+
+    m.likelihood.variance = sigma_n
+    m.likelihood.variance.fix()
+    m.optimize_restarts(n_restarts)
+    return FunctionModel(SGPR, m)
+
+
 def learn_function(
+        X: ndarray, Y:ndarray, kernel,
+        sigma_n: float,
+        n_restarts) -> FunctionModel:
+
+    m = GPy.models.GPRegression(
+        X, Y, kernel,
+        normalizer=False
+    )
+
+    m.likelihood.variance = sigma_n
+    m.likelihood.variance.fix()
+    m.optimize_restarts(n_restarts)
+    return FunctionModel(GPR, m)
+
+
+def learn_function_raw(
         X: ndarray, Y: ndarray, applyPriors,
         f_type: str,  kernel=None,
         num_inducing=None, n_restarts=3) -> FunctionModel:
     model = GP(
-        X, Y, kernel, # num_inducing=num_inducing,
+        X, Y, kernel, num_inducing=num_inducing,
         normalizer=False
     )
     applyPriors(model)
@@ -42,7 +76,7 @@ def learn_function(
     )
 
 
-def plot_function(f: FunctionModel, normaliser=None, ax=None):
+def plot_function(f: FunctionModel, ax=None):
     if ax:
         f.model.plot(ax=ax)
     else:
@@ -87,7 +121,7 @@ def plot_posterior(
         linestyle=linestyle
     )
 
-    fill_label = None if label is None else label + ' probability bands'
+    fill_label = 'Probability bands' if label is not None else None
     ax.fill_between(
         grid,
         upper_env,

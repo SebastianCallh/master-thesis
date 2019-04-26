@@ -150,13 +150,14 @@ def pre_process(
         normaliser: SegmentNormaliser,
         fraction_observed=1) -> DataFrame:
 
+    data = drop_start_dwell(data)
     data = compute_time_left(data)
     data = stop_compress(data, stop_compress_delta)
     data['tau'] = compute_tau(data)
     data = take_fraction(data, fraction_observed)
-    dx, dy = compute_velocity_from_pos(data)
+    #dx, dy = compute_velocity_from_pos(data)
     data.x = normaliser.normalise_x(data.x)
     data.y = normaliser.normalise_y(data.y)
-    data['dx'] = normaliser.normalise_dx(dx)
-    data['dx'] = normaliser.normalise_dy(dy)
+    data.dx = normaliser.normalise_dx(data.dx)
+    data.dy = normaliser.normalise_dy(data.dy)
     return data
