@@ -8,11 +8,30 @@ from psycopg2.extras import DictCursor
 from GPy.models import GPRegression
 from itertools import chain
 from .trajectory_model import TrajectoryModel, FunctionModel
+import pickle
+from datetime import datetime
 
 # DB CONSTANTS
 DB_NAME = 'msc'
 DB_USER = 'gp_user'
 DB_PW = 'gp_pw'
+
+VERSION = 0  # added to route
+
+PICKLE_DIR = './pickles'
+
+def pickle_path(name: str):
+    return'{}/{}.pkl'.format(PICKLE_DIR, name)
+
+
+def save_pickle(name: str, data):
+    with open(pickle_path(name), 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_pickle(name: str):
+    with open(pickle_path(name), 'rb') as handle:
+        return pickle.load(handle)
 
 
 def acquire_db_conn():
@@ -23,48 +42,42 @@ def acquire_db_conn():
 
 
 def save_model(model: TrajectoryModel, conn) -> int:
-    f_p_x_id_1 = save_function(model.f_p_x_1, conn)
-    f_p_y_id_1 = save_function(model.f_p_y_1, conn)
-    f_p_x_id_2 = save_function(model.f_p_x_2, conn)
-    f_p_y_id_2 = save_function(model.f_p_y_2, conn)
-    f_v_x_id_1 = save_function(model.f_v_x_1, conn)
-    f_v_y_id_1 = save_function(model.f_v_y_1, conn)
-    f_v_x_id_2 = save_function(model.f_v_x_2, conn)
-    f_v_y_id_2 = save_function(model.f_v_y_2, conn)
-    g_id = save_function(model.g, conn)
-    h_id = save_function(model.h, conn)
     with conn.cursor() as cur:
         cur.execute(
             '''
             INSERT INTO model (
             route, segment, traj, 
-            fpxid1, fpyid1,
-            fpxid2, fpyid2, 
-            fvxid1, fvyid1,
-            fvxid2, fvyid2,
-            gid, hid
+            fpx, fpx1, fpx2,
+            fpy, fpy1, fpy2, 
+            fvx, fvx1, fvx2,
+            fvy, fvy1, fvy2,
+            g, h
             ) VALUES (
             %(route)s, %(segment)s, %(traj)s, 
-            %(fpxid1)s, %(fpyid1)s,
-            %(fpxid2)s, %(fpyid2)s, 
-            %(fvxid1)s, %(fvyid1)s,
-            %(fvxid2)s, %(fvyid2)s, 
-            %(gid)s, %(hid)s)
+            %(fpx)s, %(fpx1)s, %(fpx2)s,
+            %(fpy)s, %(fpy1)s, %(fpy2)s,
+            %(fvx)s, %(fvx1)s, %(fvx2)s,
+            %(fvy)s, %(fvy1)s, %(fvy2)s,
+            %(g)s, %(h)s)
             RETURNING id
             ''', {
-                'route': int(model.route),
+                'route': int(model.route) + VERSION,
                 'segment': int(model.segment),
                 'traj': int(model.traj),
-                'fpxid1': f_p_x_id_1,
-                'fpyid1': f_p_y_id_1,
-                'fpxid2': f_p_x_id_2,
-                'fpyid2': f_p_y_id_2,
-                'fvxid1': f_v_x_id_1,
-                'fvyid1': f_v_y_id_1,
-                'fvxid2': f_v_x_id_2,
-                'fvyid2': f_v_y_id_2,
-                'gid': g_id,
-                'hid': h_id
+                'fpx': pickle.dumps(model.f_p_x),
+                'fpx1': pickle.dumps(model.f_p_x_1),
+                'fpx2': pickle.dumps(model.f_p_x_2),
+                'fpy': pickle.dumps(model.f_p_y),
+                'fpy1': pickle.dumps(model.f_p_y_1),
+                'fpy2': pickle.dumps(model.f_p_y_2),
+                'fvx': pickle.dumps(model.f_v_x),
+                'fvx1': pickle.dumps(model.f_v_x_1),
+                'fvx2': pickle.dumps(model.f_v_x_2),
+                'fvy': pickle.dumps(model.f_v_y),
+                'fvy1': pickle.dumps(model.f_v_y_1),
+                'fvy2': pickle.dumps(model.f_v_y_2),
+                'g': pickle.dumps(model.g),
+                'h': pickle.dumps(model.h)
             })
         model_id = cur.fetchone()[0]
         conn.commit()
@@ -72,27 +85,25 @@ def save_model(model: TrajectoryModel, conn) -> int:
     return model_id
 
 
-def model_from_db(res, conn):
-    f_p_x_1 = load_function(res['fpxid1'], conn)
-    f_p_y_1 = load_function(res['fpyid1'], conn)
-    f_p_x_2 = load_function(res['fpxid2'], conn)
-    f_p_y_2 = load_function(res['fpyid2'], conn)
-    f_v_x_1 = load_function(res['fvxid1'], conn)
-    f_v_y_1 = load_function(res['fvyid1'], conn)
-    f_v_x_2 = load_function(res['fvxid2'], conn)
-    f_v_y_2 = load_function(res['fvyid2'], conn)
-    g = load_function(res['gid'], conn)
-    h = load_function(res['hid'], conn)
+def model_from_db(res):
     return TrajectoryModel(
-        res['route'],
-        res['segment'],
-        res['traj'],
-        None, None, None, None,
-        f_p_x_1, f_p_x_2,
-        f_p_y_1, f_p_y_2,
-        f_v_x_1, f_v_x_2,
-        f_v_y_1, f_v_y_2,
-        g, h
+        route=res['route'],
+        segment=res['segment'],
+        traj=res['traj'],
+        f_p_x=pickle.loads(res['fpx']),
+        f_p_x_1=pickle.loads(res['fpx1']),
+        f_p_x_2=pickle.loads(res['fpx2']),
+        f_p_y=pickle.loads(res['fpy']),
+        f_p_y_1=pickle.loads(res['fpy1']),
+        f_p_y_2=pickle.loads(res['fpy2']),
+        f_v_x=pickle.loads(res['fvx']),
+        f_v_x_1=pickle.loads(res['fvx1']),
+        f_v_x_2=pickle.loads(res['fvx2']),
+        f_v_y=pickle.loads(res['fvy']),
+        f_v_y_1=pickle.loads(res['fvy1']),
+        f_v_y_2=pickle.loads(res['fvy2']),
+        g=pickle.loads(res['g']),
+        h=pickle.loads(res['h'])
     )
 
 
@@ -106,7 +117,19 @@ def model_ids(route: int, segment: int, conn) -> [int]:
     return list(chain.from_iterable(res))
 
 
-def load_models(
+def load_models(route_n, seg_n, limit):
+    with acquire_db_conn() as conn:
+        models = sorted(load_models_with_conn(
+            int(route_n),
+            int(seg_n),
+            limit, conn
+        ), key=lambda m: m.traj)
+
+    print('loaded {} models: {}'.format(len(models), [m.traj for m in models]))
+    return models
+
+
+def load_models_with_conn(
         route: int, segment: int,
         limit: int, conn) -> [TrajectoryModel]:
 
@@ -115,20 +138,21 @@ def load_models(
             '''
             SELECT 
             route, segment, traj, 
-            fpxid1, fpxid2,
-            fpyid1, fpyid2, 
-            fvxid1, fvxid2,
-            fvyid1, fvyid2,
-            gid, hid
+            fpx, fpx1, fpx2,
+            fpy, fpy1, fpy2,
+            fvx, fvx1, fvx2,
+            fvy, fvy1, fvy2,
+            g, h
             FROM model
             WHERE route = %s
             AND segment = %s
+            ORDER BY traj
             LIMIT %s;
             ''',
-            (route, segment, limit))
+            (route + VERSION, segment, limit))
         res = cur.fetchall()
 
-    return [model_from_db(x, conn) for x in res]
+    return [model_from_db(x) for x in res]
 
 
 def save_function(func: FunctionModel, conn) -> int:

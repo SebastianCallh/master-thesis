@@ -162,3 +162,5 @@ __pycache__
 
 # Notebook
 .ipynb_checkpoints
+
+*.idea

@@ -32,7 +32,7 @@ def normaliser_for_seg(seg: DataFrame) -> SegmentNormaliser:
     normalise_x = lambda x: (x - d_px) / sd_p
     normalise_y = lambda y: (y - d_py) / sd_p
     normalise_dx = lambda dx: (dx - d_vx) / sd_v
-    normalise_dy = lambda dy: (dy - d_vx) / sd_v
+    normalise_dy = lambda dy: (dy - d_vy) / sd_v
 
     unnormalise_x = lambda x: sd_p * x + d_px
     unnormalise_y = lambda y: sd_p * y + d_py

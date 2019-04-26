@@ -1,4 +1,4 @@
-"""This module defines the "inverse-Gaussian Process" trajectory model.
+"""A single trajectory model, consisting of many function models.
 """
 
 import math
@@ -15,15 +15,19 @@ from pandas import DataFrame
 from scipy.stats import norm
 
 from .function_model import FunctionModel, plot_function, predict, \
-    plot_with_credible_bands, learn_function, plot_posterior, gamma_prior
-from .metric import time
+    plot_posterior, learn_function, learn_sparse
+
 from .plotting import plot_grid, default_color, plot_data, plot_marker, \
-    plot_mixture
+    plot_mixture, grid_for
 from .pre_process import duplicate, SegmentNormaliser
 
 F_CODOMAIN = ['x', 'y', 'dx', 'dy']
 KM_H_RATIO = 3.6
-KM_RATIO = 1000
+KM_RATIO = 1e-3
+INTEGRATION_DELTA = 1e-3
+
+def model_label(k):
+    return r'$\mathcal{M}_{' + str(k) + '}$'
 
 class TrajectoryModel(NamedTuple):
     route: int
@@ -62,12 +66,13 @@ def combine(mu: ndarray, var: ndarray):
 
 
 def loglik(x: ndarray, mu: ndarray, sigma: ndarray):
-    #z = x - mu
-    #return -0.5 * z * (1 / sigma) * z \
-    #       - 0.5 * np.log(np.prod(sigma))
     z = x - mu
-    return -0.5*z.T.dot(inv(sigma)).dot(z) \
-        - 0.5*np.log(det(sigma))
+    return -0.5 * z * (1 / sigma) * z \
+           - 0.5 * np.log(sigma)
+
+    #z = x - mu
+    #return -0.5*z.T.dot(inv(sigma)).dot(z) \
+    #    - 0.5*np.log(det(sigma))
 
 
 def model_data_loglik(
@@ -77,12 +82,12 @@ def model_data_loglik(
     #print('computing loglik fotr', tau.shape, X_obs.shape)
 
     def loglik(x: ndarray, mu: ndarray, sigma: ndarray):
-        #z = x - mu
+        z = x - mu
         #return -0.5 * z * (1 / sigma) * z \
         #       - 0.5 * np.log(np.prod(sigma))
 
-        return -0.5*((x-mu).T).dot(inv(sigma)).dot(x-mu) \
-            -0.5*np.log(det(sigma))
+        return -0.5*z.T.dot(inv(sigma)).dot(z) \
+            - 0.5*np.log(det(sigma))
 
     mu_p_x1, var_p_x1 = predict(model.f_p_x_1, tau)
     mu_p_x2, var_p_x2 = predict(model.f_p_x_2, tau)
@@ -227,168 +232,156 @@ def equidistant_points(
 
 def learn_model(
         data: DataFrame,
-        route_n: int, seg_n: int, traj_n,
-        f_p_codomain: List[str],
-        f_v_codomain: [str],
-        f_p_likelihood_noise: float,
-        f_v_likelihood_noise: float,
-        normaliser: SegmentNormaliser,
+        route_n: int, seg_n: int, traj_n: int,
+        f_p_sigma_n: float,
+        f_v_sigma_n: float,
+        g_sigma_n: float,
+        h_sigma_n: float,
         delta_xy: float,
         delta_p: float,
         delta_v: float,
-        ) -> TrajectoryModel:
+        hyperparams: ndarray,
+        # var_hyperparams: ndarray,
+        # lin_hyperparams: ndarray,
+        n_restarts=3) -> TrajectoryModel:
 
-    def apply_f_p_x_priors(m):
-        # kern.rbf.lengthscale
-        #return
-        #m.kern.lengthscale.set_prior(gamma_prior(0.15, 0.1))
-        #m.kern.variance.set_prior(gamma_prior(0.25, 0.1))
-        # m.kern.linear.variances.set_prior(gamma_prior(0.15, 0.1))
-        m.likelihood.variance = f_p_likelihood_noise / normaliser.p_scale
-        m.likelihood.variance.fix()
+    rbf_kernel = lambda: GPy.kern.RBF(1)
+    matern_kernel = lambda: GPy.kern.Matern32(1)  # + GPy.kern.Bias(1)
 
-    def apply_f_p_y_priors(m):
-        #m.kern.lengthscale.set_prior(gamma_prior(0.15, 0.1))
-        #m.kern.variance.set_prior(gamma_prior(0.25, 0.1))
-        # m.kern.linear.variances.set_prior(gamma_prior(0.15, 0.1))
-        m.likelihood.variance = f_p_likelihood_noise / normaliser.p_scale
-        m.likelihood.variance.fix()
+    N = data.shape[0]
+    f_p_inducing = round(N*.3)
+    f_v_inducing = round(N*.3)
+    g_inducing = round(N*.15)
+    h_inducing = round(N*.3)
 
-    def apply_f_v_x_priors(m):
-        # m.kern.lengthscale.set_prior(gamma_prior(.01, 1))
-        m.kern.variance.set_prior(gamma_prior(5, 3))
-        # m.likelihood_noise.set_prior(gamma_prior(0.4, 0.4))
-        m.likelihood.variance = f_v_likelihood_noise / normaliser.v_scale
-        m.likelihood.variance.fix()
+    def fpx_kernel():
+        k = matern_kernel()
+        # k.lengthscale.set_prior(
+        #     gamma_prior(hyperparams['fpx_ls'][0], hyperparams['fpx_ls'][2])
+        # )
+        # k.variance.set_prior(
+        #     gamma_prior(hyperparams['fpx_var'][0], hyperparams['fpx_var'][2])
+        # )
+        return k
 
-    def apply_f_v_y_priors(m):
-        # m.kern.lengthscale.set_prior(gamma_prior(0.1, 0.04))
-        m.kern.variance.set_prior(gamma_prior(5, 3))
-        # m.likelihood_noise.set_prior(gamma_prior(0.4, 0.4))
-        m.likelihood.variance = f_v_likelihood_noise / normaliser.v_scale
-        m.likelihood.variance.fix()
-
-    def apply_g_priors(m):
-        return
-        # m.kern.rbf.lengthscale.set_prior(gamma_prior(0.10, 0.05))
-        # m.kern.rbf.variance.set_prior(gamma_prior(0.25, 0.1))
-        # m.kern.linear.variances.set_prior(gamma_prior(0.15, 0.1))
-        # m.likelihood.variance = 0.1
-        # m.likelihood.variance.fix()
-
-    def apply_h_priors(m):
-        return
-        #m.likelihood.variance = 0.1
-        #m.likelihood.variance.fix()
-
-    def learn_tau_rbf_func(x, y, n_inducing, priors, name):
-        return learn_function(
-            x, y, priors, name,
-            kernel=GPy.kern.Matern52(
-                input_dim=1,
-                ARD=False
-            ), num_inducing=n_inducing  # z=np.random.rand(n_inducing, 1)
-        )
-
-    f_p_inducing = 20
-    f_v_inducing = 131
-    f_g_inducing = 50
-    h_inducing = 20
-
-    # Learn an interpolation function first
+    # p_x
     tau = data.tau.values.reshape(-1, 1)
-    p_x = data[f_p_codomain[0]].values.reshape(-1, 1)
-    p_y = data[f_p_codomain[1]].values.reshape(-1, 1)
-    f_p_x = learn_tau_rbf_func(tau, p_x, f_p_inducing, apply_f_p_x_priors, 'f_p_x')
-    f_p_y = learn_tau_rbf_func(tau, p_y, f_p_inducing, apply_f_p_y_priors, 'f_p_y')
-
-    # Interpolate
-    delta_tau = 0.005
-    tau_grid = np.linspace(0, 1, round(1/delta_tau)).reshape(-1, 1)
-    mu_p_x, _ = f_p_x.model.predict(tau_grid)
-    mu_p_y, _ = f_p_y.model.predict(tau_grid)
-
-    # Compute equidistant spatial steps
-    # too small steps makes for singular covariance matrix
-    #points_p_x = equidistant_points(tau_grid, mu_p_x, epsilon_p)
-    #equidist_p_x_tau = tau_grid  # points_p_x[:, 0].reshape(-1, 1)
-    #equidist_p_x = mu_p_x  # points_p_x[:, 1].reshape(-1, 1)
-
-    #equidist_p_y = points_p[:, 2].reshape(-1, 1)
-
-    # Project orthogonally and create support GPs
-    #p_x_1, p_x_2 = duplicate(equidist_p_x_tau, equidist_p_x, delta_p)
-    p_x_1 = mu_p_x + delta_xy
-    p_x_2 = mu_p_x - delta_xy
-
-    f_p_x_1 = learn_tau_rbf_func(
-        tau_grid, p_x_1.reshape(-1, 1),
-        f_p_inducing, apply_f_p_x_priors, 'f_p_x_1'
-    )
-    f_p_x_2 = learn_tau_rbf_func(
-        tau_grid, p_x_2.reshape(-1, 1),
-        f_p_inducing, apply_f_p_x_priors, 'f_p_x_2'
+    p_x = data.x.values.reshape(-1, 1)
+    f_p_x = learn_function(
+        tau, p_x, fpx_kernel(),
+        f_p_sigma_n, n_restarts
     )
 
-    #points_p_y = equidistant_points(tau_grid, mu_p_y, epsilon_p)
+    p_x_grid = f_p_x.model.X
+    # [
+    #     (f_p_x.model.Z >= 0.0) & (f_p_x.model.Z <= 1.0)
+    # ].values.reshape(-1, 1)
+    mu_p_x, _ = predict(f_p_x, p_x_grid)
+
+    p_x_1 = (mu_p_x + delta_p).reshape(-1, 1)
+    f_p_x_1 = learn_function(
+        p_x_grid, p_x_1, fpx_kernel(),
+        f_p_sigma_n, n_restarts
+    )
+    p_x_2 = (mu_p_x - delta_p).reshape(-1, 1)
+    f_p_x_2 = learn_function(
+        p_x_grid, p_x_2,  fpx_kernel(),
+        f_p_sigma_n, n_restarts
+    )
+
+    def fpy_kernel():
+        k = matern_kernel()
+        # k.lengthscale.set_prior(
+        #     gamma_prior(hyperparams['fpy_ls'][0], hyperparams['fpy_ls'][2])
+        # )
+        # k.variance.set_prior(
+        #     gamma_prior(hyperparams['fpy_var'][0], hyperparams['fpy_var'][2])
+        # )
+        return k
+
+    # p_x
+    p_y = data.y.values.reshape(-1, 1)
+    f_p_y = learn_function(
+        tau, p_y, fpy_kernel(),
+        f_p_sigma_n, n_restarts
+    )
+    p_y_grid = f_p_y.model.X
+    # [
+    #     (f_p_y.model.Z >= 0) & (f_p_y.model.Z <= 1.0)
+    # ].values.reshape(-1, 1)
+    mu_p_y, _ = predict(f_p_y, p_y_grid)
+
     p_y_1 = mu_p_y + delta_p
+    f_p_y_1 = learn_function(
+        p_y_grid, p_y_1, fpy_kernel(),
+        f_p_sigma_n, n_restarts
+    )
+
     p_y_2 = mu_p_y - delta_p
-    f_p_y_1 = learn_tau_rbf_func(
-        tau_grid, p_y_1.reshape(-1, 1),
-        f_p_inducing, apply_f_p_y_priors, 'f_p_y_1'
+    f_p_y_2 = learn_function(
+        p_y_grid, p_y_2, fpy_kernel(),
+        f_p_sigma_n, n_restarts
     )
-    f_p_y_2 = learn_tau_rbf_func(
-        tau_grid, p_y_2.reshape(-1, 1),
-        f_p_inducing, apply_f_p_y_priors, 'f_p_y_2'
-    )
+
+    def fvx_kernel():
+        k = matern_kernel()
+        # k.lengthscale.set_prior(
+        #     gamma_prior(hyperparams['fvx_ls'][0], hyperparams['fvx_ls'][2])
+        # )
+        # k.variance.set_prior(
+        #     gamma_prior(hyperparams['fvx_var'][0], hyperparams['fvx_var'][2])
+        # )
+        return k
 
     # Do the same for velocity
-    v_x = data[f_v_codomain[0]].values.reshape(-1, 1)
-    v_y = data[f_v_codomain[1]].values.reshape(-1, 1)
-    f_v_x = learn_tau_rbf_func(tau, v_x, f_v_inducing, apply_f_v_x_priors, 'f_v_x')
-    f_v_y = learn_tau_rbf_func(tau, v_y, f_v_inducing, apply_f_v_y_priors, 'f_v_y')
-    mu_v_x, _ = f_v_x.model.predict(tau_grid)
-    mu_v_y, _ = f_v_y.model.predict(tau_grid)
-
-    #points_v_x = equidistant_points(tau_grid, mu_v_x, epsilon_v)
-    #equidist_v_x_tau = points_v_x[:, 0].reshape(-1, 1)
-    # equidist_v_x = points_v_x[:, 1].reshape(-1, 1)
-    #equidist_v_y = points_v[:, 2].reshape(-1, 1)
+    v_x = data.dx.values.reshape(-1, 1)
+    f_v_x = learn_function(
+        tau, v_x, fvx_kernel(),
+        f_v_sigma_n, n_restarts
+    )
+    v_x_grid = f_v_x.model.X
+    mu_v_x, _ = predict(f_v_x, v_x_grid)
 
     v_x_1 = mu_v_x + delta_v
+    f_v_x_1 = learn_function(
+        v_x_grid, v_x_1, fvx_kernel(),
+        f_v_sigma_n, n_restarts
+    )
     v_x_2 = mu_v_x - delta_v
-    f_v_x_1 = learn_tau_rbf_func(
-        tau_grid, v_x_1.reshape(-1, 1),
-        f_v_inducing, apply_f_v_x_priors, 'f_v_x_1'
-    )
-    f_v_x_2 = learn_tau_rbf_func(
-        tau_grid, v_x_2.reshape(-1, 1),
-        f_v_inducing, apply_f_v_x_priors, 'f_v_x_2'
+    f_v_x_2 = learn_function(
+        v_x_grid, v_x_2, fvx_kernel(),
+        f_v_sigma_n, n_restarts
     )
 
-    #points_v_y = equidistant_points(tau_grid, mu_v_y, epsilon_v)
-    #equidist_v_y_tau = points_v_y[:, 0].reshape(-1, 1)
-    # equidist_v_y = points_v_y[:, 1].reshape(-1, 1)
+    def fvy_kernel():
+        k = matern_kernel()
+        # k.lengthscale.set_prior(
+        #     gamma_prior(hyperparams['fvy_ls'][0], hyperparams['fvy_ls'][2])
+        # )
+        # k.variance.set_prior(
+        #     gamma_prior(hyperparams['fvy_var'][0], hyperparams['fvy_var'][2])
+        # )
+        return k
+    print(fvy_kernel())
+    v_y = data.dy.values.reshape(-1, 1)
+    f_v_y = learn_function(
+        tau, v_y, fvy_kernel(),
+        f_v_sigma_n, n_restarts
+    )
+    v_y_grid = f_v_y.model.X
+    mu_v_y, _ = predict(f_v_y, v_y_grid)
+
     v_y_1 = mu_v_y + delta_v
+    f_v_y_1 = learn_function(
+        v_y_grid, v_y_1, fvy_kernel(),
+        f_v_sigma_n, n_restarts
+    )
+
     v_y_2 = mu_v_y - delta_v
-        #, v_y_2 = duplicate(equidist_v_y_tau, equidist_v_y,
-        # delta_v)
-
-    f_v_y_1 = learn_tau_rbf_func(
-        tau_grid, v_y_1.reshape(-1, 1),
-        f_v_inducing, apply_f_v_y_priors, 'f_v_y_1'
+    f_v_y_2 = learn_function(
+        v_y_grid, v_y_2, fvy_kernel(),
+        f_v_sigma_n, n_restarts
     )
-    f_v_y_2 = learn_tau_rbf_func(
-        tau_grid, v_y_2.reshape(-1, 1),
-        f_v_inducing, apply_f_v_y_priors, 'f_v_y_2'
-    )
-
-    # augment_delta = 0.015
-    # support_data = create_support_data(
-    #     tau, f_p_x_1, f_p_x_2,
-    #     f_p_y_1, f_p_y_2,
-    #     augment_delta
-    # )
 
     points_spatial_1, points_spatial_2 = duplicate(
         data.x.values, data.y.values, delta_xy
@@ -403,29 +396,44 @@ def learn_model(
     g_pos = augmented_data[['x', 'y']].values.reshape(-1, 2)
     g_tau = augmented_data['tau'].values.reshape(-1, 1)
 
-    g = learn_function(
-        g_pos, g_tau,
-        apply_g_priors, 'g',
-        kernel=GPy.kern.RBF(
-            input_dim=2,
-            ARD=False
-        ) + GPy.kern.Linear(
-            input_dim=2,
-            ARD=False
-        ), num_inducing=f_g_inducing
+    def g_kernel():
+        k_mat = GPy.kern.RBF(input_dim=2, ARD=False)
+        k_lin = GPy.kern.Linear(input_dim=2, ARD=False)
+        # k_mat.lengthscale.set_prior(
+        #    gamma_prior(hyperparams['g_ls'][0], hyperparams['g_ls'][2])
+        # )
+        # k_mat.variance.set_prior(
+        #    gamma_prior(hyperparams['g_var'][0], hyperparams['g_var'][2])
+        # )
+        # k_lin.variances.set_prior(
+        #    gamma_prior(hyperparams['g_lin'][0], hyperparams['g_lin'][2])
+        # )
+        return k_mat + k_lin
+
+    g = learn_sparse(
+        g_pos, g_tau, g_kernel(),
+        g_inducing, g_sigma_n, n_restarts
     )
 
     time_left = data.time_left.values.reshape(-1, 1)
+
+    def h_kernel():
+        k_mat = GPy.kern.Matern32(input_dim=1, ARD=False)
+        k_lin = GPy.kern.Linear(input_dim=1, ARD=False)
+        # k_mat.lengthscale.set_prior(
+        #     gamma_prior(hyperparams['h_ls'][0], hyperparams['h_ls'][2])
+        # )
+        # k_mat.variance.set_prior(
+        #     gamma_prior(hyperparams['h_var'][0], hyperparams['h_var'][2])
+        # )
+        # k_lin.variances.set_prior(
+        #     gamma_prior(hyperparams['h_lin'][0], hyperparams['h_lin'][2])
+        # )
+        return k_mat + k_lin
+
     h = learn_function(
-        tau, time_left,
-        apply_h_priors, 'h',
-        kernel=GPy.kern.RBF(
-            input_dim=1,
-            ARD=False
-        ) + GPy.kern.Linear(
-            input_dim=1,
-            ARD=False
-        ), num_inducing=h_inducing
+        tau, time_left, h_kernel(),
+        h_sigma_n, n_restarts
     )
 
     return TrajectoryModel(
@@ -458,44 +466,27 @@ def to_prob(x):
     x = np.exp(x - x.max())
     return x / x.sum()
 
-
-def to_probabilities(likelihoods):
-    likelihoods = np.apply_along_axis(np.cumsum, 2, likelihoods)
-    likelihoods = np.apply_along_axis(to_prob, 1, likelihoods)
-    return likelihoods
-
-
-# this is the divide by zero guy
-def model_weights(models: List[TrajectoryModel], X_obs: ndarray) -> ndarray:
-    n_models = 4
-    logliks = np.empty((n_models, len(models)))
-    pos, vel = X_obs[:, 0:2].reshape(-1, 2), X_obs[:, 2:4].reshape(-1, 2)
-    for i, m in enumerate(models):
-        tau, _ = predict(m.g, pos)
-        p_x, p_y = pos[:, 0].reshape(-1, 1), pos[:, 1].reshape(-1, 1)
-        v_x, v_y = vel[:, 0].reshape(-1, 1), vel[:, 1].reshape(-1, 1)
-        print(v_x.shape, p_x.shape)
-        mu_p_x, var_p_x = combined_prediction(tau, m.f_p_x_1, m.f_p_x_2)
-        print(var_p_x.T[0].shape)
-        logliks[0][i] = loglik(p_x, mu_p_x, np.diag(var_p_x.T[0]))
-        mu_p_y, var_p_y = combined_prediction(tau, m.f_p_y_1, m.f_p_y_2)
-        logliks[1][i] = loglik(p_y, mu_p_y, np.diag(var_p_y.T[0]))
-        mu_v_x, var_v_x = combined_prediction(tau, m.f_v_x_1, m.f_v_x_2)
-        logliks[2][i] = loglik(v_x, mu_v_x, np.diag(var_v_x.T[0]))
-        mu_v_y, var_v_y = combined_prediction(tau, m.f_v_y_1, m.f_v_y_2)
-        logliks[3][i] = loglik(v_y, mu_v_y, np.diag(var_v_y.T[0]))
-
-    probs = np.apply_along_axis(to_prob, 1, logliks)
-    print(probs.shape)
-    probs = np.apply_along_axis(np.sum, 0, probs)
-    return probs / probs.sum()
-
-    #
-    # pos = X_obs[:, :2]
-    # for i, model in enumerate(models):
-    #     tau, _ = predict(model.g, pos)
-    #     logliks[i] = model_data_loglik(model, tau, X_obs)
-    # return to_probabilities(logliks)
+#
+# def model_weights(models: List[TrajectoryModel], X_obs: ndarray) -> ndarray:
+#     n_models = 4
+#     logliks = np.empty((n_models, len(models)))
+#     pos, vel = X_obs[:, 0:2].reshape(-1, 2), X_obs[:, 2:4].reshape(-1, 2)
+#     for i, m in enumerate(models):
+#         tau, _ = predict(m.g, pos)
+#         p_x, p_y = pos[:, 0].reshape(-1, 1), pos[:, 1].reshape(-1, 1)
+#         v_x, v_y = vel[:, 0].reshape(-1, 1), vel[:, 1].reshape(-1, 1)
+#         mu_p_x, var_p_x = combined_prediction(tau, m.f_p_x_1, m.f_p_x_2)
+#         logliks[0][i] = loglik(p_x, mu_p_x, np.diag(var_p_x.T[0]))
+#         mu_p_y, var_p_y = combined_prediction(tau, m.f_p_y_1, m.f_p_y_2)
+#         logliks[1][i] = loglik(p_y, mu_p_y, np.diag(var_p_y.T[0]))
+#         mu_v_x, var_v_x = combined_prediction(tau, m.f_v_x_1, m.f_v_x_2)
+#         logliks[2][i] = loglik(v_x, mu_v_x, np.diag(var_v_x.T[0]))
+#         mu_v_y, var_v_y = combined_prediction(tau, m.f_v_y_1, m.f_v_y_2)
+#         logliks[3][i] = loglik(v_y, mu_v_y, np.diag(var_v_y.T[0]))
+#
+#     probs = np.apply_along_axis(to_prob, 1, logliks).sum(axis=0)
+#     #probs = np.apply_along_axis(np.sum, 0, probs)
+#     return probs / probs.sum()
 
 
 def model_cum_probs(models, X_obs):
@@ -510,10 +501,7 @@ def model_cum_probs(models, X_obs):
         ]
 
     cum_logliks = np.apply_along_axis(np.cumsum, 1, logliks)
-    #print(cum_logliks.shape, 'cum logliks')
-    #print(cum_logliks[:, :4])
-    larges_loglik = cum_logliks.max()
-    to_probs = lambda loglik: to_probabilities(loglik, larges_loglik)
+    to_probs = lambda loglik: to_probabilities(loglik)
     probs = np.apply_along_axis(to_probs, 0, cum_logliks)
     #print('probs')
     #print(probs[:, :4])
@@ -533,46 +521,52 @@ def model_cum_probs(models, X_obs):
     # return cum_model_probs
 
 
-def model_t_mu_predictions(
-        models: List[TrajectoryModel],
-        X_obs: ndarray
-        ) -> Tuple[ndarray, ndarray]:
-
-    pos = X_obs[:, 0:2]
-    taus = [
-        predict(m.g, pos)[0]
-        for m in models
-    ]
-    t_mu_mus, t_mu_sigmas = zip(*[
-        predict(m.h, tau.reshape(-1, 1))
-        for m, tau in
-        zip(models, taus)
-    ])
-
-    t_mu_mus = np.hstack(t_mu_mus)
-    t_mu_sigmas = np.hstack(t_mu_sigmas)
-    return t_mu_mus, t_mu_sigmas
+def trajectory_arrival_time_prior(
+        m: TrajectoryModel) -> ndarray:
+    tau0 = np.array([0]).reshape(1, 1)
+    mu, pred_var = predict(m.h, tau0)
+    var = pred_var + segment_uncertainty(m.segment)
+    return np.array((mu, var))
 
 
-def t_prediction(t_mu_mus: ndarray, t_mu_sigmas: ndarray):
-    sigma_h = 1
-    t_mus = t_mu_mus
-    t_sigmas = np.repeat(sigma_h, t_mu_sigmas.shape[0]).reshape(-1, 1)
-    return t_mus, t_sigmas
+def arrival_time_prediction(
+        m: TrajectoryModel, X_obs: ndarray
+        ) -> Tuple[float, float]:
+    pos = X_obs[:, :2].reshape(-1, 2)
+    tau, _ = predict(m.g, pos)
+    mu_t, var_t = predict(m.h, tau.reshape(-1, 1))
+    var_mp = model_uncertainty(m, tau[-1], INTEGRATION_DELTA)
+    return mu_t[-1], (var_t + var_mp)[-1]
 
 
-def most_probable_model_predictor(
-        models: List[TrajectoryModel], X_obs: ndarray) -> Tuple[ndarray, int]:
-    cum_probs = model_cum_probs(models, X_obs)
-    weights = cum_probs[:, -1]  # model_weights(models, X_obs)
-    most_probable_model = models[weights.argmax()]
-    print('most probable is', weights.argmax())
-    latest_pos = X_obs[-1, 0:2].reshape(-1, 2)
-    t_mu_mu, t_mu_sigma = model_t_mu_predictions(
-        [most_probable_model], latest_pos
-    )
-    t_pred, _ = t_prediction(t_mu_mu, t_mu_sigma)
-    return t_pred, most_probable_model.traj
+def segment_uncertainty(seg_n: int) -> float:
+    n_trajs_estimated_from = 60
+    sigmas = [40, 13, 14, 12, 11, 12, 21, 12, 25, 24, 20]
+    return sigmas[seg_n - 1] / n_trajs_estimated_from
+
+
+def model_uncertainty(m: TrajectoryModel, tau0: float, dx: float) -> float:
+    return segment_uncertainty(m.segment)
+
+    # N = round(1/dx)
+    # tau = np.linspace(0, tau0, N).reshape(-1, 1)
+    # mu_v_x, var_v_x = combined_prediction(tau, m.f_v_x_1, m.f_v_x_2)
+    # mu_v_y, var_v_y = combined_prediction(tau, m.f_v_y_1, m.f_v_y_2)
+    # g = lambda y: np.gradient(y.reshape(-1))
+    # s = lambda grad: np.sum(np.sqrt(1 + grad**2))
+    #
+    # #"import matplotlib.pyplot as plt
+    # #_, ax = plt.subplots(1, 1)
+    # g_v_x, g_v_y = g(mu_v_x), g(mu_v_y)
+    # s_v_x, s_v_y = s(g_v_x), s(g_v_y)
+    # sigma_mp = segment_uncertainty(m.segment)
+    # tau_grid = tau.reshape(-1)
+    # #ax.plot(tau_grid, mu_v_x.reshape(-1), label='predicted v_x')
+    # #ax.plot(tau_grid, g_v_x.reshape(-1), label='gradients')
+    # #ax.plot(tau.reshape(-1), cum_s(g_v_x).reshape(-1), label='arc length')
+    # #ax.legend()
+    # return sigma_mp # float(s_v_x / sigma_mp)
+
 
 
 def model_p_y_loglik(model: TrajectoryModel, tau: ndarray, vel: ndarray):
@@ -588,26 +582,6 @@ def model_p_y_loglik(model: TrajectoryModel, tau: ndarray, vel: ndarray):
     return loglik(v_y, mu_p_y, sigma)
 
 
-def model_cum_gp_likelihoods(models: List[TrajectoryModel], X_obs: ndarray):
-    n_models = 4
-    logliks = np.empty((n_models, len(models), X_obs.shape[0]))
-    for i, m in enumerate(models):
-        for j in range(X_obs.shape[0]):
-            pos, vel = X_obs[j, 0:2].reshape(-1, 2), X_obs[j, 2:4]
-            tau, _ = predict(m.g, pos)
-            p_x, p_y = pos.T[0].reshape(-1, 1), pos.T[1].reshape(-1, 1)
-            v_x, v_y = vel[0].reshape(-1, 1), vel[1].reshape(-1, 1)
-
-            mu_p_x, var_p_x = combined_prediction(tau, m.f_p_x_1, m.f_p_x_2)
-            logliks[0][i][j] = loglik(p_x, mu_p_x, var_p_x)
-            mu_p_y, var_p_y = combined_prediction(tau, m.f_p_y_1, m.f_p_y_2)
-            logliks[1][i][j] = loglik(p_y, mu_p_y, var_p_y)
-            mu_v_x, var_v_x = combined_prediction(tau, m.f_v_x_1, m.f_v_x_2)
-            logliks[2][i][j] = loglik(v_x, mu_v_x, var_v_x)
-            mu_v_y, var_v_y = combined_prediction(tau, m.f_v_y_1, m.f_v_y_2)
-            logliks[3][i][j] = loglik(v_y, mu_v_y, var_v_y)
-
-    return logliks
 
 
 # MODEL PLOTTING
@@ -617,6 +591,7 @@ def plot_with_combination(
         ax, grid: ndarray,
         f1: FunctionModel,
         f2: FunctionModel,
+        label: str,
         scale: Callable[[ndarray], ndarray]):
     color = default_color(0)
     fuse_color = default_color(6)
@@ -631,12 +606,12 @@ def plot_with_combination(
 
     plot_posterior(
         ax, grid, combined_mu_fpx, np.sqrt(combined_var_fpx),
-        label=r'Combination of pseudo $f_{p_x}$', color=fuse_color
+        label=r"$f^{'}_{" + label + "}$", color=fuse_color
     )
 
     plot_posterior(
         ax, grid, mu1, np.sqrt(var1),
-        label=r'Pseudo $f_{p_x}$', color=color
+        label=r"Pseudo $f_{" + label + "}$", color=color
     )
 
     plot_posterior(
@@ -654,37 +629,51 @@ def make_grid(xmin, xmax, res=100, padding=0):
     )
 
 
-def plot_gp_likelihoods(tau_grid: ndarray, likelihoods: ndarray, linestyle):
-    n_gps = 2
-    _, axs = plot_grid(n_gps, n_gps)
-    for model_n in range(likelihoods.shape[1]):
+def plot_gp_likelihoods(tau_grid: ndarray, gp_logliks: ndarray, linestyle):
+    _, axs = plot_grid(2, 2)
+    for model_n in range(gp_logliks.shape[1]):
         axs[0, 0].plot(
-            tau_grid, likelihoods[0][model_n],
+            tau_grid, gp_logliks[0][model_n],
             color=default_color(model_n),
             linestyle=linestyle(model_n))
         axs[0, 1].plot(
-            tau_grid, likelihoods[1][model_n],
+            tau_grid, gp_logliks[1][model_n],
             color=default_color(model_n),
             linestyle=linestyle(model_n))
         axs[1, 0].plot(
-            tau_grid, likelihoods[2][model_n],
+            tau_grid, gp_logliks[2][model_n],
             color=default_color(model_n),
             linestyle=linestyle(model_n))
         axs[1, 1].plot(
-            tau_grid, likelihoods[3][model_n],
+            tau_grid, gp_logliks[3][model_n],
             color=default_color(model_n),
             linestyle=linestyle(model_n))
 
-    for ax1 in axs:
-        for ax2 in ax1:
-            ax2.set_xlabel(r'$\tau$')
-            ax2.set_ylabel(r'$p(\mathcal{M}_k \vert X_{1:n})$')
+    fs = [
+        r"f^{'}_{p_x}", r"f^{'}_{p_y}",
+        r"f^{'}_{v_x}", r"f^{'}_{v_y}",
+        " "
+    ]
+    title = lambda x: r'Pointwise log likelihood of $' + x + '$'
+    for f, ax in zip(fs, axs.flatten()):
+        ax.set_title(title(f))
+        ax.set_xlabel(r'$\tau$')
+        ax.set_ylabel(r'$p(\mathcal{M}_k \vert ' + f + 'X_{1:n})$')
+        ax.plot([], [], label='True model', color="#202020")
+        ax.plot([], [], linestyle='--', label='Other models', color="#202020")
+        ax.legend()
 
-    title = r'Cumulative probability of {}'
-    axs[0, 0].set_title(title.format('$f_{p_x}$'))
-    axs[0, 1].set_title(title.format('$f_{p_y}$'))
-    axs[1, 0].set_title(title.format('$f_{v_x}$'))
-    axs[1, 1].set_title(title.format('$f_{v_y}$'))
+    # Plot totals
+    # model_probs = to_model_probabilities(gp_logliks)
+    # for i, p in enumerate(model_probs):
+    #     axs[2, 0].plot(
+    #         tau_grid, model_probs[i],
+    #         label=model_label(i),
+    #         color=default_color(i),
+    #         linestyle=linestyle(i)
+    #     )
+    # axs[2, 0].set_title('Cumulative model probabilities')
+    #axs[2, 1].axis('off')
 
 
 def plot_model_functions(m: TrajectoryModel, normaliser: SegmentNormaliser):
@@ -716,6 +705,7 @@ def plot_model_functions(m: TrajectoryModel, normaliser: SegmentNormaliser):
     g_ax.set_title(r'$g$')
     plot_function(m.g, g_ax)
 
+
 def plot_model(
         m: TrajectoryModel,
         data: DataFrame,
@@ -742,10 +732,10 @@ def plot_model(
     x_y_ax.set_ylabel(r'$p_y$')
 
     # h for input data
-    x = data[F_CODOMAIN].values[:, :2]
-    mean, _ = predict(m.g, x)
+    pos = data[['x', 'y']].values
+    tau, _ = predict(m.g, pos)
     df = pd.DataFrame({
-        'prediction': mean.T[0],
+        'prediction': tau.T[0],
         'progress': data['tau'].values
     })
     sns.scatterplot(
@@ -760,15 +750,15 @@ def plot_model(
     # Training data
     plot_function(m.g, ax=g_ax)
     g_ax.set_aspect('equal', 'box')
-    g_ax .set_title(r'Inverse model function $g: (x, y) \mapsto \tau$')
-    g_ax .set_xlabel(r'$p_x$')
-    g_ax .set_ylabel(r'$p_y$')
+    g_ax.set_title(r'Inverse model function $g: (x, y) \mapsto \tau$')
+    g_ax.set_xlabel(r'$p_x$')
+    g_ax.set_ylabel(r'$p_y$')
     #axs[0][1].axis('scaled')
 
     # H for training data
-    mean, _ = m.g.model.predict(m.g.model.X)
+    tau, _ = m.g.model.predict(m.g.model.X)
     df = pd.DataFrame({
-        'prediction': mean.T[0],
+        'prediction': tau.T[0],
         'progress': m.g.model.Y.flatten()
     })
     sns.scatterplot(
@@ -780,63 +770,80 @@ def plot_model(
     axs[1][1].set_title(r'Predicted $\tau$ of training data')
 
     # Tau grid
-    xmin, xmax = m.f_p_x_1.model.X.min(), m.f_p_x_1.model.X.max()
-    tau_grid = make_grid(xmin, xmax, 100)
-
+    xmin, xmax = m.f_p_x.model.X.min(), m.f_p_x.model.X.max()
+    tau_grid = data.tau.values  # make_grid(xmin, xmax, 100)
+    unnorm_x = lambda x: normaliser.unnormalise_x(x)*KM_RATIO
     plot_with_combination(
         f_p_x_ax, tau_grid,
         m.f_p_x_1, m.f_p_x_2,
-        lambda x: normaliser.unnormalise_x(x)*KM_RATIO
+        'f_{p_x}',
+        unnorm_x
     )
-    p_x_1 = normaliser.unnormalise_x(m.f_p_x_1.model.Y)*KM_RATIO
-    p_x_2 = normaliser.unnormalise_x(m.f_p_x_2.model.Y)*KM_RATIO
-    plot_data(f_p_x_ax, m.f_p_x_1.model.X, p_x_1, label=None)
-    plot_data(f_p_x_ax, m.f_p_x_2.model.X, p_x_2)
+    #p_x_1, p_x_2 = unnorm_x(m.f_p_x_1.model.Y), unnorm_x(m.f_p_x_2.model.Y)
+    #plot_data(f_p_x_ax, m.f_p_x.model.X, unnorm_x(m.f_p_x.model.Y))
+    #plot_data(f_p_x_ax, m.f_p_x_2.model.X, p_x_2)
+    #m.f_p_x.model.plot_inducing(ax=f_p_x_ax)
+
+    plot_data(f_p_x_ax, data.tau, unnorm_x(data.x))
     f_p_x_ax.set_title(r'Model function $f_{p_x}: \tau \mapsto p_x$')
     f_p_x_ax.set_xlabel(r'$\tau$')
     f_p_x_ax.set_ylabel(r'$p_x$')
-    f_p_x_ax.legend()
+    f_p_x_ax.set_xlim(0, 1)
+    f_p_x_ax.legend(loc=2)
 
+    unnorm_y = lambda y: normaliser.unnormalise_y(y)*KM_RATIO
     plot_with_combination(
         f_p_y_ax, tau_grid,
         m.f_p_y_1, m.f_p_y_2,
-        lambda x: normaliser.unnormalise_y(x)*KM_RATIO
+        'f_{p_y}',
+        unnorm_y
     )
-    p_y_1 = normaliser.unnormalise_y(m.f_p_y_1.model.Y)*KM_RATIO
-    p_y_2 = normaliser.unnormalise_y(m.f_p_y_2.model.Y)*KM_RATIO
-    plot_data(f_p_y_ax, m.f_p_y_1.model.X, p_y_1, label=None)
-    plot_data(f_p_y_ax, m.f_p_y_2.model.X, p_y_2)
+    #p_y_1, p_y_2 = unnorm_y(m.f_p_y_1.model.Y), unnorm_y(m.f_p_y_2.model.Y)
+    #plot_data(f_p_y_ax, m.f_p_y_1.model.X, p_y_1, label=None)
+    #plot_data(f_p_y_ax, m.f_p_y_2.model.X, p_y_2)
+    #m.f_p_y.model.plot_inducing(ax=f_p_y_ax)
+    plot_data(f_p_y_ax, data.tau, unnorm_y(data.y))
     f_p_y_ax.set_title(r'Model function $f_{p_y}: \tau \mapsto p_y$')
     f_p_y_ax.set_xlabel(r'$\tau$')
     f_p_y_ax.set_ylabel(r'$p_y$')
-    f_p_y_ax.legend()
+    f_p_y_ax.set_xlim(0, 1)
+    f_p_y_ax.legend(loc=3)
 
+    unnorm_dx = lambda dx: normaliser.unnormalise_dx(dx)*KM_H_RATIO
     plot_with_combination(
         f_v_x_ax, tau_grid,
         m.f_v_x_1, m.f_v_x_2,
-        lambda x: normaliser.unnormalise_dx(x)*KM_H_RATIO
+        'f_{v_x}',
+        unnorm_dx
     )
-    v_x_1 = normaliser.unnormalise_dx(m.f_v_x_1.model.Y)*KM_H_RATIO
-    v_x_2 = normaliser.unnormalise_dx(m.f_v_x_2.model.Y)*KM_H_RATIO
-    plot_data(f_v_x_ax, m.f_v_x_1.model.X, v_x_1, label=None)
-    plot_data(f_v_x_ax, m.f_v_x_2.model.X, v_x_2)
+    v_x_1, v_x_2 = unnorm_dx(m.f_v_x_1.model.Y), unnorm_dx(m.f_v_x_2.model.Y)
+    #plot_data(f_v_x_ax, m.f_v_x_1.model.X, v_x_1, label=None)
+    #plot_data(f_v_x_ax, m.f_v_x_2.model.X, v_x_2)
+    #m.f_v_x.model.plot_inducing(ax=f_v_x_ax)
+    plot_data(f_v_x_ax, data.tau, unnorm_dx(data.dx))
     f_v_x_ax.set_title(r'Model function $f_{v_x}: \tau \mapsto v_x$')
     f_v_x_ax.set_xlabel(r'$\tau$')
     f_v_x_ax.set_ylabel(r'$v_x$')
+    f_v_x_ax.set_xlim(0, 1)
     f_v_x_ax.legend()
 
+    unnorm_dy = lambda dy: normaliser.unnormalise_dy(dy)*KM_H_RATIO
     plot_with_combination(
         f_v_y_ax, tau_grid,
         m.f_v_y_1, m.f_v_y_2,
-        lambda x: normaliser.unnormalise_dy(x)*KM_H_RATIO
+        'f_{v_y}',
+        unnorm_dy
     )
-    v_y_1 = normaliser.unnormalise_dy(m.f_v_y_1.model.Y)*KM_H_RATIO
-    v_y_2 = normaliser.unnormalise_dy(m.f_v_y_2.model.Y)*KM_H_RATIO
-    plot_data(f_v_y_ax, m.f_v_y_1.model.X, v_y_1, label=None)
-    plot_data(f_v_y_ax, m.f_v_y_2.model.X, v_y_2)
+
+    #v_y_1, v_y_2 = unnorm_dy(m.f_v_y_1.model.Y), unnorm_dy(m.f_v_y_2.model.Y)
+    #plot_data(f_v_y_ax, m.f_v_y_1.model.X, v_y_1, label=None)
+    #plot_data(f_v_y_ax, m.f_v_y_2.model.X, v_y_2)
+    plot_data(f_v_y_ax, data.tau, unnorm_dy(data.dy))
+    #m.f_v_y.model.plot_inducing(ax=f_v_y_ax)
     f_v_y_ax.set_title(r'Model function $f_{v_y}: \tau \mapsto v_y$')
     f_v_y_ax.set_xlabel(r'$\tau$')
     f_v_y_ax.set_ylabel(r'$v_y$')
+    f_v_y_ax.set_xlim(0, 1)
     f_v_y_ax.legend()
 
     # h
@@ -845,10 +852,12 @@ def plot_model(
         h_ax, tau_grid, t_mu, np.sqrt(t_var),
         color=default_color(0), label=r'$h$'
     )
-    plot_data(h_ax, m.h.model.X, m.h.model.Y)
+    plot_data(h_ax, data.tau, data.time_left)
+    #m.h.model.plot_inducing(ax=h_ax)
     h_ax.set_title(r'Arrival time function $h: \tau \mapsto y$')
     h_ax.set_xlabel(r'$\tau$')
     h_ax.set_ylabel(r'$t$')
+    h_ax.set_xlim(0, 1)
     h_ax.legend()
 
 
@@ -963,127 +972,24 @@ def combined_prediction(grid, f1, f2):
     )
 
 
-def plot_most_probable_models(
-        models,
-        model_weights,
-        cum_model_probs,
-        data,
-        linestyle,
-        n_models=3):
+def to_probabilities(likelihoods):
+    def to_prob(x):
+        x = np.exp(x - x.max())
+        return x / x.sum()
 
-    model_indicies = range(len(models))
-    most_probable_models = sorted(
-        zip(model_weights, model_indicies, models),
-        key=lambda x: x[0],
-        reverse=True
-    )
+    cum_likelihoods = np.apply_along_axis(np.cumsum, 2, likelihoods)
+    return np.apply_along_axis(to_prob, 1, cum_likelihoods)
 
-    _, ax = plot_grid(3, 2)
-    xmin, xmax = 0, data.iloc[-1].tau
-    tau_grid = make_grid(xmin, xmax, 100, padding=0)
-    p_x_ax = ax[0][0]
-    p_y_ax = ax[0][1]
-    v_x_ax = ax[1][0]
-    v_y_ax = ax[1][1]
-    t_ax = ax[2][0]
-    probs_ax = ax[2][1]
-    label = lambda i: r'$\mathcal{M}_{' + str(i) + '}$'
 
-    tau = tau_grid.reshape(-1, 1)
-    for w, i, m in most_probable_models[:n_models]:
-        mu_p_x, var_p_x = combined_prediction(
-            tau, m.f_p_x_1, m.f_p_x_2
-        )
-        plot_with_credible_bands(
-            p_x_ax, tau_grid, mu_p_x, var_p_x,
-            label(i), default_color(i), linestyle(i)
-        )
 
-        mu_p_y, var_p_y = combined_prediction(
-            tau, m.f_p_y_1, m.f_p_y_2
-        )
-        plot_with_credible_bands(
-            p_y_ax, tau_grid, mu_p_y, var_p_y,
-            label(i), default_color(i), linestyle(i)
-        )
-
-        mu_v_x, var_v_x = combined_prediction(
-            tau, m.f_v_x_1, m.f_v_x_2
-        )
-        plot_with_credible_bands(
-            v_x_ax, tau_grid, mu_v_x, var_v_x,
-            label(i), default_color(i), linestyle(i)
-        )
-
-        mu_v_y, var_v_y = combined_prediction(
-            tau, m.f_v_y_1, m.f_v_y_2
-        )
-        plot_with_credible_bands(
-            v_y_ax, tau_grid, mu_v_y, var_v_y,
-            label(i), default_color(i), linestyle(i)
-        )
-
-        mu_h, var_h = predict(m.h, tau)
-        plot_with_credible_bands(
-            t_ax, tau_grid, mu_h, var_h,
-            label(i), default_color(i), linestyle(i)
-        )
-
-    # prob_grid = np.linspace(xmin, xmax, data.shape[0])
-    # for w, i, m in most_probable_models[:n_models * 2]:
-    #     probs = cum_model_probs[i, :]
-    #     probs_ax.plot(
-    #         prob_grid, probs,
-    #         label=label(i),
-    #         color=default_color(i),
-    #         linestyle=linestyle(i)
-    #     )
-
-    suffix = lambda n: ' for {} most probable models'.format(n)
-    plot_data(p_x_ax, data.tau, data.x)
-    p_x_ax.set_title(r'Predicted $x$-position' + suffix(n_models))
-    p_x_ax.set_xlabel(r'$\tau$')
-    p_x_ax.set_ylabel(r'$p(p_x | \mathcal{M}_k, X_{obs})$')
-    p_x_ax.legend()
-
-    plot_data(p_y_ax, data.tau, data.y)
-    p_y_ax.set_title(r'Predicted $y$-position' + suffix(n_models))
-    p_y_ax.set_xlabel(r'$\tau$')
-    p_y_ax.set_ylabel(r'$p(p_y | \mathcal{M}_k, X_{obs})$')
-    p_y_ax.legend()
-
-    plot_data(v_x_ax, data.tau, data.dx)
-    v_x_ax.set_title(r'Predicted $x$-velocity' + suffix(n_models))
-    v_x_ax.set_xlabel(r'$\tau$')
-    v_x_ax.set_ylabel(r'$p(v_x | \mathcal{M}_k, X_{obs})$')
-    v_x_ax.legend()
-
-    plot_data(v_y_ax, data.tau, data.dy)
-    v_y_ax.set_title(r'Predicted $y$-velocity' + suffix(n_models))
-    v_y_ax.set_xlabel(r'$\tau$')
-    v_y_ax.set_ylabel(r'$p(v_y | \mathcal{M}_k, X_{obs})$')
-    v_y_ax.legend()
-
-    plot_data(t_ax, data.tau, data.time_left)
-    t_ax.set_title(r'Predicted $\mu_t$' + suffix(n_models))
-    t_ax.set_xlabel(r'$\tau$')
-    t_ax.set_ylabel(r'$p(\mu_t | \mathcal{M}_k, X_{obs})$')
-    t_ax.legend()
-
-    probs_ax.set_title(r'Cumulative model probabilities' + suffix(n_models * 2))
-    probs_ax.set_xlabel(r'$\tau$')
-    probs_ax.set_ylabel(r'$p(\mathcal{M}_k | X_{obs})$')
-    probs_ax.legend()
 
 
 def plot_model_probabilities(
         tau_grid,
-        #model_probs,
         model_ixs,
         cum_model_probs,
         linestyle):
     _, axs = plot_grid(1, 1)
-    #model_prob_ax = axs[0]
     cum_model_prob_ax = axs
     print(len(model_ixs), cum_model_probs.T.shape)
     for i, cum_prob in zip(model_ixs, cum_model_probs):
@@ -1113,21 +1019,21 @@ def plot_model_probabilities(
 
 
 def plot_t(
-        t_grid,
-        model_ixs,
-        t_mus,
-        t_sigmas,
-        weights,
-        time_left,
+        t_grid: ndarray,
+        model_ixs: ndarray,
+        t_mus: ndarray,
+        t_vars: ndarray,
+        weights: ndarray,
+        time_left: ndarray,
         linestyle):
     _, axs = plot_grid(2, 2)
     prior_t_components_ax = axs[0][0]
     posterior_t_components_ax = axs[0][1]
     prior_t_ax = axs[1][0]
     posterior_t_ax = axs[1][1]
-
-    label = lambda i: r'$\mathcal{M}_ {' + str(i) + '}$'
+    label = lambda i: r'$\mathcal{M}_{' + str(i) + '}$'
     uniform_weights = np.repeat(1, len(t_mus))
+    t_sigmas = np.sqrt(t_vars)
 
     plot_mixture(
         prior_t_components_ax,
@@ -1199,7 +1105,8 @@ def plot_t(
     plot_marker(posterior_t_ax, posterior_mean, 'Posterior mean', color='blue')
     posterior_t_ax.legend()
 
-def plot_mu_t(
+
+def plot_mixture_density(
         t_grid,
         model_ixs,
         mus, sigmas,
@@ -1214,14 +1121,19 @@ def plot_mu_t(
     posterior_ax = axs[1][1]
     label = lambda i: 'Trajectory {}'.format(i)
 
+    def add_true_model_legend(ax):
+        ax.plot([], [], label='True model', color="#202020")
+        ax.plot([], [], linestyle='--', label='Other models',
+                      color="#202020")
+
     prior_components = [
-        norm.pdf(t_grid, mu, np.sqrt(sigma))
+        norm.pdf(t_grid, mu, sigma)
         for mu, sigma in
         zip(mus, sigmas)
     ]
 
     posterior_components = [
-        w * norm.pdf(t_grid, mu, np.sqrt(sigma))
+        w * norm.pdf(t_grid, mu, sigma)
         for mu, sigma, w in
         zip(mus, sigmas, weights)
     ]
@@ -1243,6 +1155,7 @@ def plot_mu_t(
     prior_component_ax.set_title(r'$\mu_t$ Prior Components')
     prior_component_ax.set_xlabel('Seconds')
     prior_component_ax.set_ylabel('Density')
+    add_true_model_legend(prior_component_ax)
     plot_mixture(
         prior_component_ax, t_grid, model_ixs,
         mus, sigmas,
@@ -1274,95 +1187,8 @@ def plot_mu_t(
         default_color
     )
     plot_marker(posterior_component_ax, time_left, 'Arrival time')
+    add_true_model_legend(posterior_component_ax)
     posterior_component_ax.set_title(r'$\mu_t$ Posterior Components')
     posterior_component_ax.set_xlabel('Seconds')
     posterior_component_ax.set_ylabel('Density')
     # posterior_component_ax.legend()
-
-
-def plot_t(
-        t_grid,
-        model_ixs,
-        t_mus,
-        t_sigmas,
-        weights,
-        time_left,
-        linestyle):
-    _, axs = plot_grid(2, 2)
-    prior_t_components_ax = axs[0][0]
-    posterior_t_components_ax = axs[0][1]
-    prior_t_ax = axs[1][0]
-    posterior_t_ax = axs[1][1]
-
-    label = lambda i: r'$\mathcal{M}_ {' + str(i) + '}$'
-    uniform_weights = np.repeat(1, len(t_mus))
-
-    plot_mixture(
-        prior_t_components_ax,
-        t_grid, model_ixs,
-        t_mus, t_sigmas, uniform_weights,
-        label, linestyle,
-        default_color
-    )
-
-    prior_t_components_ax.set_title(r'$t$ prior components (fixed variance)')
-    prior_t_components_ax.set_xlabel(r'$t$')
-    prior_t_components_ax.set_ylabel('Density')  # p(t | \mathcal{M}_k)')
-    plot_marker(prior_t_components_ax, time_left, 'Arrival time')
-    # prior_t_components_ax.legend()
-
-    _, most_probable_model_mean, _, _ = max(
-        zip(weights, t_mus, t_sigmas, range(len(weights))),
-        key=lambda x: x[0]
-    )
-
-    plot_mixture(
-        posterior_t_components_ax,
-        t_grid, model_ixs,
-        t_mus, t_sigmas, weights,
-        label, linestyle,
-        default_color
-    )
-
-    posterior_t_components_ax.set_title(
-        r'$t$ posterior components (fixed variance)')
-    posterior_t_components_ax.set_xlabel(r'$t$')
-    posterior_t_components_ax.set_ylabel('Density')
-    plot_marker(posterior_t_components_ax, most_probable_model_mean,
-                'Most probable model mean', color='blue')
-    plot_marker(posterior_t_components_ax, time_left, 'Arrival time')
-    # posterior_t_components_ax.legend()
-
-    prior_components = [
-        norm.pdf(t_grid, mu, np.sqrt(sigma))
-        for mu, sigma in
-        zip(t_mus, t_sigmas)
-    ]
-    prior = reduce(np.add, prior_components)
-    prior = prior / (np.sum(prior))
-    prior_mean = np.sum(prior * t_grid) / np.sum(prior)
-    prior_t_ax.plot(t_grid, prior, color=default_color(0))
-
-    posterior_t_ax.set_xlabel(r'$\tau$')
-    posterior_t_ax.set_ylabel('Density')
-    posterior_t_ax.set_title(r'$t$ prior')
-    plot_marker(prior_t_ax, time_left, 'Arrival time')
-    plot_marker(prior_t_ax, prior_mean, 'Prior mean', color='blue')
-    prior_t_ax.legend()
-
-    posterior_components = [
-        w * norm.pdf(t_grid, mu, np.sqrt(sigma))
-        for mu, sigma, w in
-        zip(t_mus, t_sigmas, weights)
-    ]
-    posterior = reduce(np.add, posterior_components).reshape(t_grid.shape[0])
-    posterior = posterior / np.sum(posterior)
-    posterior_mean = np.sum(posterior * t_grid)
-
-    posterior_t_ax.plot(t_grid, posterior, color=default_color(0))
-    posterior_t_ax.set_xlabel(r'$\tau$')
-    posterior_t_ax.set_ylabel('Density')
-    posterior_t_ax.set_title(r'$t$ posterior')
-    plot_marker(posterior_t_ax, time_left, 'Arrival time')
-    plot_marker(posterior_t_ax, posterior_mean, 'Posterior mean', color='blue')
-    posterior_t_ax.legend()
