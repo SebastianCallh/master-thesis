@@ -1,20 +1,18 @@
 """The entire model, consisting of several trajectory models
 """
-from numpy import ndarray, math
+from numpy import ndarray
 import numpy as np
-from typing import List, Callable, Tuple
-
+from typing import List, Callable
 from pandas import DataFrame
 from scipy.stats import norm
 
+from .Types import GaussianMixture, Categorical
 from .storage import load_models
-from .function_model import predict, plot_with_credible_bands
-from .plotting import plot_data, default_color, plot_grid, grid_for
+from .function_model import plot_with_credible_bands
+from .plotting import plot_data, default_color, plot_grid
 from .segment_normaliser import SegmentNormaliser
 from .trajectory_model import TrajectoryModel, loglik, combined_prediction, \
-    model_label, combine, KM_H_RATIO, KM_RATIO, arrival_time_prediction, \
-    INTEGRATION_DELTA, model_uncertainty, F_CODOMAIN, \
-    trajectory_arrival_time_prior
+    model_label, combine, KM_H_RATIO, KM_RATIO,  F_CODOMAIN
 
 
 class SegmentModel:
@@ -30,8 +28,14 @@ class SegmentModel:
         self.seg_n = seg_n
         self.trajectory_models = trajectory_models
 
+    def __iter__(self):
+        yield from self.trajectory_models
+
     def __len__(self):
         return len(self.trajectory_models)
+
+    def __getitem__(self, item):
+        return self.trajectory_models[item]
 
     def add_model(self, model: TrajectoryModel) -> None:
         self.trajectory_models.append(model)
@@ -39,38 +43,45 @@ class SegmentModel:
     def predict_arrival_time(self, traj: DataFrame) -> float:
         return mixture_of_gps_predictor(self, traj[F_CODOMAIN].values)
 
-    def arrival_time_prior(self) -> ndarray:
-        return np.hstack([
-            trajectory_arrival_time_prior(m).reshape(1, 2)
-            for m in self.trajectory_models
-        ]).reshape(-1, 2)
+    def arrival_time_prior_predictive(self) -> GaussianMixture:
+        return GaussianMixture(
+             components=[
+                 m.arrival_time_prior_predictive()
+                 for m in self.trajectory_models
+             ],
+             weights=Categorical.uniform(
+                 size=len(self.trajectory_models)
+             )
+        )
 
-    def arrival_time_posterior(self, obs: ndarray) -> Tuple[ndarray, ndarray]:
-        if obs.shape == (0, 0):
-            prior_params = self.arrival_time_prior()
-            return prior_params[:, 0], prior_params[:, 1]
+    def arrival_time_posterior_predictive(self, x_obs: ndarray) -> GaussianMixture:
+        return (
+            self.arrival_time_prior_predictive() if x_obs.shape[0] == 0
+            else GaussianMixture(
+                components=[
+                    m.arrival_time_posterior_predictive(x_obs)
+                    for m in self
+                ],
+                weights=self.model_probabilities(x_obs)
+            )
+        )
 
-        pos = obs[:, :2]
-        mus, vars = np.ndarray((len(self),)), np.ndarray((len(self),))
-        for i, m in enumerate(self.trajectory_models):
-            tau, _ = predict(m.g, pos)
-            mu, var = predict(m.h, tau.reshape(-1, 1))
-            var += model_uncertainty(m, tau[-1], INTEGRATION_DELTA)
-            mus[i] = mu.reshape(-1)
-            vars[i] = var.reshape(-1)
-
-        return mus, vars
+    def model_probabilities(self, x_obs: ndarray) -> Categorical:
+        gp_likelihoods = gp_logliks(self, x_obs)
+        model_probs = to_model_probabilities(gp_likelihoods)
+        probabilities = model_probs[:, -1]
+        return Categorical(alpha=probabilities)
 
 
 def load_seg_model(
-        route_n: int, seg_n: int, limit: int = 10000) -> SegmentModel:
+        route_n: int,
+        seg_n: int,
+        limit: int = 10000) -> SegmentModel:
     models = load_models(route_n, seg_n, limit)
     return SegmentModel(route_n, seg_n, models)
 
 
-def prior_density_from_params(
-        x: ndarray,
-        model_prior_params: ndarray) -> ndarray:
+def prior_density_from_params(x: ndarray, model_prior_params: ndarray) -> ndarray:
     assert model_prior_params.shape[1] == 2
 
     unnormed_density = np.vstack([
@@ -80,16 +91,15 @@ def prior_density_from_params(
     return unnormed_density / unnormed_density.sum()
 
 
-def gp_logliks(
-    model: SegmentModel,
-    X_obs: ndarray) -> ndarray:
+def gp_logliks(model: SegmentModel, x_obs: ndarray) -> ndarray:
     n_models = 4
     models = model.trajectory_models
-    logliks = np.empty((n_models, len(models), X_obs.shape[0]))
+    logliks = np.empty((n_models, len(models), x_obs.shape[0]))
     for i, m in enumerate(models):
-        for j, obs in enumerate(np.rollaxis(X_obs, axis=0)):
+        for j, obs in enumerate(np.rollaxis(x_obs, axis=0)):
             pos, vel = obs[0:2], obs[2:4]
-            tau, _ = predict(m.g, pos.reshape(-1, 2))
+            mean_tau, _ = m.g.predict(pos.reshape(-1, 2))
+            tau = mean_tau.val
             p_x, p_y = pos[0].reshape(-1, 1), pos[1].reshape(-1, 1)
             v_x, v_y = vel[0].reshape(-1, 1), vel[1].reshape(-1, 1)
             mu_p_x, var_p_x = combined_prediction(tau, m.f_p_x_1, m.f_p_x_2)
@@ -104,8 +114,8 @@ def gp_logliks(
     return logliks
 
 
-def to_model_probabilities(gp_loglikelihoods: ndarray):
-    model_likelihoods = gp_loglikelihoods.sum(axis=0)
+def to_model_probabilities(gp_log_likelihoods: ndarray):
+    model_likelihoods = gp_log_likelihoods.sum(axis=0)
     cum_model_likelihoods = model_likelihoods.cumsum(axis=1)
     cum_model_likelihoods -= cum_model_likelihoods.max(axis=0)
     cum_model_likelihoods = np.exp(cum_model_likelihoods)
@@ -114,46 +124,25 @@ def to_model_probabilities(gp_loglikelihoods: ndarray):
     )
 
 
-def most_probable_models(X_obs, models):
+def most_probable_models(x_obs, models):
     """Point-wise most probable model"""
-    assert X_obs.shape[0] > 0
-    gp_likelihoods = gp_logliks(models, X_obs)
+    assert x_obs.shape[0] > 0
+    gp_likelihoods = gp_logliks(models, x_obs)
     probs = to_model_probabilities(gp_likelihoods)
     return probs.argmax(axis=0)
 
 
-def model_probabilities(model: SegmentModel, X_obs: ndarray) -> ndarray:
-    gp_likelihoods = gp_logliks(model, X_obs)
-    model_probs = to_model_probabilities(gp_likelihoods)
-    probabilities = model_probs[:, -1]
-    return probabilities
-
-def most_probable_model_predictor(
-        model: SegmentModel,
-        X_obs: ndarray) -> float: # Tuple[float, float, int]:
-    likelihoods = model_probabilities(model, X_obs)
-    most_probable_model = model.trajectory_models[likelihoods.argmax()]
-    latest_pos = X_obs[-1, 0:2].reshape(-1, 2)
-    t_mu, t_var = arrival_time_prediction(
-        most_probable_model, latest_pos
-    )
-    return t_mu #, t_var, most_probable_model.traj
+def most_probable_model_predictor(model: SegmentModel, x_obs: ndarray) -> float:
+    probabilities = model.model_probabilities(x_obs)
+    most_probable_model = model.trajectory_models[probabilities.mode()]
+    latest_pos = x_obs[-1, 0:2].reshape(-1, 2)
+    gaussian = most_probable_model.arrival_time_posterior_predictive(latest_pos)
+    return float(gaussian.mean.val)
 
 
-def mixture_of_gps_predictor(
-        model: SegmentModel,
-        X_obs: ndarray) -> float:
-    likelihoods = model_probabilities(model, X_obs)
-    last_obs = X_obs[-1, :].reshape(1, -1)
-    mus, vars = model.arrival_time_posterior(last_obs)
-    sigmas = np.sqrt(vars)
-    xx = grid_for(mus.reshape(-1), sigmas.reshape(-1))
-    unnormed_density = np.vstack([
-        w*norm.pdf(xx, mu, sigma)
-        for w, mu, sigma in zip(likelihoods, mus, sigmas)
-    ]).sum(axis=0).reshape(-1)
-    mean_pred = float(np.sum(unnormed_density / unnormed_density.sum() * xx))
-    return mean_pred
+def mixture_of_gps_predictor(model: SegmentModel, x_obs: ndarray) -> float:
+    last_obs = x_obs[-1, :].reshape(1, -1)
+    return model.arrival_time_posterior_predictive(last_obs).mean()
 
 
 def plot_most_probable_models(
@@ -191,9 +180,10 @@ def plot_most_probable_models(
     models_to_plot = most_probable_models[:n_models]
     pos = data[['x', 'y']].values
     for w, i, m in models_to_plot:
-        tau, _ = predict(m.g, pos)
-        mu_p_x_1, var_p_x_1 = predict(m.f_p_x_1, tau)
-        mu_p_x_2, var_p_x_2 = predict(m.f_p_x_2, tau)
+        mean_tau, _ = m.g.predict(pos)
+        tau = mean_tau.val
+        mu_p_x_1, var_p_x_1 = m.f_p_x_1.predict(tau)
+        mu_p_x_2, var_p_x_2 = m.f_p_x_2.predict(tau)
         mu_p_x, var_p_x = combine(
             np.hstack((unnorm_x(mu_p_x_1), unnorm_x(mu_p_x_2))),
             np.hstack((var_p_x_1, var_p_x_2))
@@ -211,8 +201,8 @@ def plot_most_probable_models(
             model_label(i), default_color(i), linestyle(i)
         )
 
-        mu_v_x_1, var_v_x_1 = predict(m.f_v_x_1, tau)
-        mu_v_x_2, var_v_x_2 = predict(m.f_v_x_2, tau)
+        mu_v_x_1, var_v_x_1 = m.f_v_x_1.predict(tau)
+        mu_v_x_2, var_v_x_2 = m.f_v_x_2.predict(tau)
         mu_v_x, var_v_x = combine(
             np.hstack((unnorm_dx(mu_v_x_1), unnorm_dx(mu_v_x_2))),
             np.hstack((var_v_x_1, var_v_x_2))
@@ -222,8 +212,8 @@ def plot_most_probable_models(
             model_label(i), default_color(i), linestyle(i)
         )
 
-        mu_v_y_1, var_v_y_1 = predict(m.f_v_y_1, tau)
-        mu_v_y_2, var_v_y_2 = predict(m.f_v_y_2, tau)
+        mu_v_y_1, var_v_y_1 = m.f_v_y_1.predict(tau)
+        mu_v_y_2, var_v_y_2 = m.f_v_y_2.predict(tau)
         mu_v_y, var_v_y = combine(
             np.hstack((unnorm_dy(mu_v_y_1), unnorm_dy(mu_v_y_2))),
             np.hstack((var_v_y_1, var_v_y_2))
@@ -233,7 +223,7 @@ def plot_most_probable_models(
             model_label(i), default_color(i), linestyle(i)
         )
 
-        mu_h, var_h = predict(m.h, tau)
+        mu_h, var_h = m.h.predict(tau)
         plot_with_credible_bands(
             t_ax, tau_grid, mu_h, var_h,
             model_label(i), default_color(i), linestyle(i)
