@@ -1,0 +1,14 @@
+#+REVEAL_ROOT: http://cdn.jsdelivr.net/reveal.js/3.0.0/
+#+REVEAL_TRANS: none
+#+REVEAL_MAX_SCALE: 2
+#+REVEAL_PLUGINS: (notes)
+#+OPTIONS: toc:nil
+#+TITLE: Trajectory-based Arrival Time Prediction using Gaussian Processes 
+# reveal_title_slide:nil
+
+* Problem Description
+* Gaussian Processes
+  
+* The model
+* Comparison 
+* Results
