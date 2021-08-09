@@ -76,7 +76,7 @@ PySocks==1.6.8
 pytest==3.8.2
 python-dateutil==2.7.3
 pytz==2018.5
-pywin32==223
+pywin32==301
 pywinpty==0.5.4
 pyzmq==17.1.2
 requests==2.20.0
